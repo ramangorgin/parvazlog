@@ -10,7 +10,7 @@
 
 /* ===== Base Styles ===== */
 :root {
-    --base-font-size: 16px;          /* change this to scale all text */
+    --base-font-size: 16px;          /* Change this to scale all text */
     --body-font-family: 'Vazirmatn', Tahoma, sans-serif;
 }
 
@@ -119,4 +119,28 @@ input, select, textarea, button, .form-control, .form-select, .btn {
 .modal-footer .btn {
     min-width: 130px;
     font-size: 0.95rem;
+}
+
+/* ===== Form container fade ===== */
+#formContainer {
+opacity: 0;
+transition: opacity 0.3s ease;
+pointer-events: none;
+}
+#formContainer.visible {
+opacity: 1;
+pointer-events: auto;
+}
+
+#searchDiv {
+    width: 100%;
+}
+
+/* ===== Smooth table row appearance ===== */
+.table tbody tr {
+    animation: fadeInRow 0.3s ease;
+}
+@keyframes fadeInRow {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

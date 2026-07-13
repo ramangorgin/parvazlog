@@ -22,7 +22,8 @@ let tickets: any[] = [];
 let editingId: number | null = null;
 let passengers: any[] = [];
 let currentPreviewTickets: any[] = [];
-let currentPreviewIsFull = true;   // remember which version was shown
+let currentPreviewIsFull = true;
+let searchTerm = '';
 
 // ---------- Utility ----------
 function computeTotal(price: number, penalty: number): number {
@@ -68,6 +69,16 @@ async function loadTickets() {
     });
     bindTableEvents();
     updateMultiButtons();
+    applySearchFilter();
+}
+
+function applySearchFilter() {
+    const filter = searchTerm.toLowerCase().trim();
+    const rows = document.querySelectorAll('#ticketsTableBody tr');
+    rows.forEach(row => {
+        const text = (row.textContent || '').toLowerCase();
+        (row as HTMLElement).style.display = filter === '' || text.includes(filter) ? '' : 'none';
+    });
 }
 
 function bindTableEvents() {
@@ -151,32 +162,25 @@ async function showPreview(ticketsToPreview: any[]) {
                                    focusCancel: true,
     });
 
-    // User clicked outside / pressed Esc → do nothing
-    if (result.isDismissed && result.dismiss !== Swal.DismissReason.cancel) {
-        return;
-    }
+    if (result.isDismissed && result.dismiss !== Swal.DismissReason.cancel) return;
 
-    // If we reach here, either "نسخه کامل" was confirmed (isConfirmed = true)
-    // or "نسخه مشتری" was clicked (isDismissed && dismiss == cancel)
-    const isFull = result.isConfirmed;   // true = full version, false = customer version
+    const isFull = result.isConfirmed;
     currentPreviewIsFull = isFull;
 
     const modalBody = document.getElementById('previewContent')!;
     let html = '';
     ticketsToPreview.forEach((t, idx) => {
         html += buildPreviewHTML(t, isFull);
-        if (idx < ticketsToPreview.length - 1) {
-            html += '<div style="page-break-after: always;"></div>';
-        }
+        if (idx < ticketsToPreview.length - 1) html += '<div style="page-break-after: always;"></div>';
     });
-    modalBody.innerHTML = html;
+        modalBody.innerHTML = html;
 
-    const modalEl = document.getElementById('previewModal')!;
-    const modal = new bootstrap.Modal(modalEl);
-    modal.show();
+        const modalEl = document.getElementById('previewModal')!;
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
 
-    (document.getElementById('printPreviewBtn')!).onclick = () => window.print();
-    (document.getElementById('exportPreviewBtn')!).onclick = () => exportPreviewAsImage();
+        (document.getElementById('printPreviewBtn')!).onclick = () => window.print();
+        (document.getElementById('exportPreviewBtn')!).onclick = () => exportPreviewAsImage();
 }
 
 function buildPreviewHTML(ticket: any, isFull: boolean): string {
@@ -210,8 +214,8 @@ async function exportPreviewAsImage() {
     const ticketsToExport = currentPreviewTickets;
     if (!ticketsToExport.length) return;
 
+    let savedCount = 0;
     for (const ticket of ticketsToExport) {
-        // Build temporary container for a single ticket
         const container = document.createElement('div');
         container.style.cssText = 'position:absolute;left:-9999px;top:0;';
         container.innerHTML = buildPreviewHTML(ticket, currentPreviewIsFull);
@@ -223,32 +227,49 @@ async function exportPreviewAsImage() {
         const dataUrl = canvas.toDataURL('image/png');
         const year = ticket.flight_date.split('/')[0];
         const fileName = `${year}.${ticket.row_number}.png`;
-        await api.saveImage(dataUrl, fileName);
+        const filePath = await api.saveImage(dataUrl, fileName);
+        if (filePath) {
+            savedCount++;
+        } else {
+            // User cancelled the save dialog
+            break;
+        }
     }
 
-    Swal.fire(
-        'ذخیره شد',
-        `${ticketsToExport.length} فایل با موفقیت ذخیره شد.`,
-        'success'
-    );
+    if (savedCount === 0) {
+        // All cancelled, do nothing (or show a silent cancel)
+        return;
+    } else if (savedCount < ticketsToExport.length) {
+        Swal.fire('توقف', `${savedCount} فایل ذخیره شد. باقی لغو گردید.`, 'warning');
+    } else {
+        Swal.fire('ذخیره شد', `${savedCount} فایل با موفقیت ذخیره شد.`, 'success');
+    }
 }
 
-// ---------- Form building ----------
-document.getElementById('newTicketBtn')!.addEventListener('click', () => {
-    editingId = null;
-    passengers = [{ firstNameFa: '', lastNameFa: '', firstNameEn: '', lastNameEn: '' }];
-    buildForm();
-});
-
+// ---------- Multi‑select preview button ----------
 document.getElementById('previewSelectedBtn')!.addEventListener('click', () => {
     const ids = getSelectedIds();
     const selected = tickets.filter(t => ids.includes(t.id));
     if (selected.length) showPreview(selected);
 });
 
+// ---------- Search input ----------
+document.getElementById('searchInput')!.addEventListener('input', (e) => {
+    searchTerm = (e.target as HTMLInputElement).value;
+    applySearchFilter();
+});
+
+// ---------- New ticket button ----------
+document.getElementById('newTicketBtn')!.addEventListener('click', () => {
+    editingId = null;
+    passengers = [{ firstNameFa: '', lastNameFa: '', firstNameEn: '', lastNameEn: '' }];
+    buildForm();
+});
+
+// ---------- Form building ----------
 function buildForm(existingTicket?: any) {
     const container = document.getElementById('formContainer')!;
-    container.classList.remove('d-none');
+    container.classList.add('visible');
 
     const hours = Array.from({ length: 24 }, (_, i) => {
         const n = i.toString().padStart(2, '0');
@@ -259,7 +280,6 @@ function buildForm(existingTicket?: any) {
         return { english: n, persian: toPersianDigits(n) };
     });
 
-    // Circular arrow SVG icon
     const refreshSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-repeat" viewBox="0 0 16 16">
     <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
     <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
@@ -340,12 +360,11 @@ function buildForm(existingTicket?: any) {
     </div>
     </div>
 
-    <!-- Price row: half width -->
     <div class="col-md-6">
     <label class="form-label">قیمت بلیط (ریال)</label>
     <input type="text" id="ticketPrice" class="form-control numeric price-input" value="${existingTicket ? formatPrice(String(existingTicket.ticket_price)) : ''}" required>
     </div>
-    <div class="col-12"></div> <!-- force next row -->
+    <div class="col-12"></div>
     <div class="col-md-6">
     <label class="form-label">درصد جریمه</label>
     <input type="text" id="penaltyPercent" class="form-control numeric" value="${existingTicket ? toPersianDigits(String(existingTicket.penalty_percent)) : '۰'}" required>
@@ -355,7 +374,6 @@ function buildForm(existingTicket?: any) {
     <input type="text" id="totalPrice" class="form-control" readonly>
     </div>
 
-    <!-- Passenger section -->
     <div class="col-12 mt-4">
     <h5 class="mb-3" style="color: #2c3e50;">مسافران</h5>
     <div id="passengerList"></div>
@@ -373,19 +391,16 @@ function buildForm(existingTicket?: any) {
 
     container.innerHTML = html;
 
-    // Initialize select2 for searchable elements
     $('.searchable').select2({
         placeholder: 'جستجو...',
         language: { noResults: () => 'نتیجه‌ای یافت نشد' }
     });
 
-    // Initialize date picker
     jalaliDatepicker.startWatch({
         input: document.getElementById('flightDate')!,
                                 persianDigits: true
     });
 
-    // Populate origin/destination airports based on selected cities
     const populateAirports = (citySelectId: string, airportSelectId: string, existingValue?: string) => {
         const cityVal = $(`#${citySelectId}`).val() as string;
         const $airport = $(`#${airportSelectId}`);
@@ -405,18 +420,13 @@ function buildForm(existingTicket?: any) {
         $airport.select2({ placeholder: 'انتخاب فرودگاه' });
     };
 
-    // Initialize for both with existing values
     populateAirports('originCity', 'originAirport', existingTicket?.origin_airport);
     populateAirports('destCity', 'destAirport', existingTicket?.destination_airport);
 
-    // Bind change events
     $('#originCity').on('change', () => populateAirports('originCity', 'originAirport'));
     $('#destCity').on('change', () => populateAirports('destCity', 'destAirport'));
 
-    // Render passenger inputs
     renderPassengerInputs();
-
-    // Attach form events
     attachFormEvents(existingTicket);
 }
 
@@ -471,7 +481,9 @@ function renderPassengerInputs() {
 function attachFormEvents(existingTicket?: any) {
     const form = document.getElementById('ticketForm')!;
     document.getElementById('cancelFormBtn')!.onclick = () => {
-        document.getElementById('formContainer')!.classList.add('d-none');
+        const container = document.getElementById('formContainer')!;
+        container.classList.remove('visible');
+        // Optionally clear form after transition, but we'll just hide it
     };
 
     document.querySelectorAll('.numeric').forEach(inp => {
@@ -564,7 +576,8 @@ function attachFormEvents(existingTicket?: any) {
             Swal.fire('موفق', 'بلیط(ها) با موفقیت ذخیره شد.', 'success');
         }
 
-        document.getElementById('formContainer')!.classList.add('d-none');
+        const container = document.getElementById('formContainer')!;
+        container.classList.remove('visible');
         editingId = null;
         passengers = [];
         loadTickets();

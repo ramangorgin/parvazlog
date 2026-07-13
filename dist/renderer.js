@@ -3416,6 +3416,7 @@
   var passengers = [];
   var currentPreviewTickets = [];
   var currentPreviewIsFull = true;
+  var searchTerm = "";
   function computeTotal(price, penalty) {
     return Math.round(price * (1 - penalty / 100));
   }
@@ -3455,6 +3456,15 @@
     });
     bindTableEvents();
     updateMultiButtons();
+    applySearchFilter();
+  }
+  function applySearchFilter() {
+    const filter = searchTerm.toLowerCase().trim();
+    const rows = document.querySelectorAll("#ticketsTableBody tr");
+    rows.forEach((row) => {
+      const text = (row.textContent || "").toLowerCase();
+      row.style.display = filter === "" || text.includes(filter) ? "" : "none";
+    });
   }
   function bindTableEvents() {
     document.querySelectorAll(".edit-btn").forEach((b) => b.addEventListener("click", async (e) => {
@@ -3526,18 +3536,14 @@
       reverseButtons: true,
       focusCancel: true
     });
-    if (result.isDismissed && result.dismiss !== import_sweetalert2.default.DismissReason.cancel) {
-      return;
-    }
+    if (result.isDismissed && result.dismiss !== import_sweetalert2.default.DismissReason.cancel) return;
     const isFull = result.isConfirmed;
     currentPreviewIsFull = isFull;
     const modalBody = document.getElementById("previewContent");
     let html = "";
     ticketsToPreview.forEach((t, idx) => {
       html += buildPreviewHTML(t, isFull);
-      if (idx < ticketsToPreview.length - 1) {
-        html += '<div style="page-break-after: always;"></div>';
-      }
+      if (idx < ticketsToPreview.length - 1) html += '<div style="page-break-after: always;"></div>';
     });
     modalBody.innerHTML = html;
     const modalEl = document.getElementById("previewModal");
@@ -3574,6 +3580,7 @@
   async function exportPreviewAsImage() {
     const ticketsToExport = currentPreviewTickets;
     if (!ticketsToExport.length) return;
+    let savedCount = 0;
     for (const ticket of ticketsToExport) {
       const container = document.createElement("div");
       container.style.cssText = "position:absolute;left:-9999px;top:0;";
@@ -3584,27 +3591,38 @@
       const dataUrl = canvas.toDataURL("image/png");
       const year = ticket.flight_date.split("/")[0];
       const fileName = `${year}.${ticket.row_number}.png`;
-      await api.saveImage(dataUrl, fileName);
+      const filePath = await api.saveImage(dataUrl, fileName);
+      if (filePath) {
+        savedCount++;
+      } else {
+        break;
+      }
     }
-    import_sweetalert2.default.fire(
-      "\u0630\u062E\u06CC\u0631\u0647 \u0634\u062F",
-      `${ticketsToExport.length} \u0641\u0627\u06CC\u0644 \u0628\u0627 \u0645\u0648\u0641\u0642\u06CC\u062A \u0630\u062E\u06CC\u0631\u0647 \u0634\u062F.`,
-      "success"
-    );
+    if (savedCount === 0) {
+      return;
+    } else if (savedCount < ticketsToExport.length) {
+      import_sweetalert2.default.fire("\u062A\u0648\u0642\u0641", `${savedCount} \u0641\u0627\u06CC\u0644 \u0630\u062E\u06CC\u0631\u0647 \u0634\u062F. \u0628\u0627\u0642\u06CC \u0644\u063A\u0648 \u06AF\u0631\u062F\u06CC\u062F.`, "warning");
+    } else {
+      import_sweetalert2.default.fire("\u0630\u062E\u06CC\u0631\u0647 \u0634\u062F", `${savedCount} \u0641\u0627\u06CC\u0644 \u0628\u0627 \u0645\u0648\u0641\u0642\u06CC\u062A \u0630\u062E\u06CC\u0631\u0647 \u0634\u062F.`, "success");
+    }
   }
-  document.getElementById("newTicketBtn").addEventListener("click", () => {
-    editingId = null;
-    passengers = [{ firstNameFa: "", lastNameFa: "", firstNameEn: "", lastNameEn: "" }];
-    buildForm();
-  });
   document.getElementById("previewSelectedBtn").addEventListener("click", () => {
     const ids = getSelectedIds();
     const selected = tickets.filter((t) => ids.includes(t.id));
     if (selected.length) showPreview(selected);
   });
+  document.getElementById("searchInput").addEventListener("input", (e) => {
+    searchTerm = e.target.value;
+    applySearchFilter();
+  });
+  document.getElementById("newTicketBtn").addEventListener("click", () => {
+    editingId = null;
+    passengers = [{ firstNameFa: "", lastNameFa: "", firstNameEn: "", lastNameEn: "" }];
+    buildForm();
+  });
   function buildForm(existingTicket) {
     const container = document.getElementById("formContainer");
-    container.classList.remove("d-none");
+    container.classList.add("visible");
     const hours = Array.from({ length: 24 }, (_, i) => {
       const n = i.toString().padStart(2, "0");
       return { english: n, persian: toPersianDigits(n) };
@@ -3692,12 +3710,11 @@
     </div>
     </div>
 
-    <!-- Price row: half width -->
     <div class="col-md-6">
     <label class="form-label">\u0642\u06CC\u0645\u062A \u0628\u0644\u06CC\u0637 (\u0631\u06CC\u0627\u0644)</label>
     <input type="text" id="ticketPrice" class="form-control numeric price-input" value="${existingTicket ? formatPrice(String(existingTicket.ticket_price)) : ""}" required>
     </div>
-    <div class="col-12"></div> <!-- force next row -->
+    <div class="col-12"></div>
     <div class="col-md-6">
     <label class="form-label">\u062F\u0631\u0635\u062F \u062C\u0631\u06CC\u0645\u0647</label>
     <input type="text" id="penaltyPercent" class="form-control numeric" value="${existingTicket ? toPersianDigits(String(existingTicket.penalty_percent)) : "\u06F0"}" required>
@@ -3707,7 +3724,6 @@
     <input type="text" id="totalPrice" class="form-control" readonly>
     </div>
 
-    <!-- Passenger section -->
     <div class="col-12 mt-4">
     <h5 class="mb-3" style="color: #2c3e50;">\u0645\u0633\u0627\u0641\u0631\u0627\u0646</h5>
     <div id="passengerList"></div>
@@ -3801,7 +3817,8 @@
   function attachFormEvents(existingTicket) {
     const form = document.getElementById("ticketForm");
     document.getElementById("cancelFormBtn").onclick = () => {
-      document.getElementById("formContainer").classList.add("d-none");
+      const container = document.getElementById("formContainer");
+      container.classList.remove("visible");
     };
     document.querySelectorAll(".numeric").forEach((inp) => {
       inp.addEventListener("input", (e) => {
@@ -3888,7 +3905,8 @@
         }
         import_sweetalert2.default.fire("\u0645\u0648\u0641\u0642", "\u0628\u0644\u06CC\u0637(\u0647\u0627) \u0628\u0627 \u0645\u0648\u0641\u0642\u06CC\u062A \u0630\u062E\u06CC\u0631\u0647 \u0634\u062F.", "success");
       }
-      document.getElementById("formContainer").classList.add("d-none");
+      const container = document.getElementById("formContainer");
+      container.classList.remove("visible");
       editingId = null;
       passengers = [];
       loadTickets();
