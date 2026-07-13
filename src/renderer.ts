@@ -579,3 +579,19 @@ function attachFormEvents(existingTicket?: any) {
 
 // ---------- Initial load ----------
 loadTickets();
+
+// ---------- update ----------
+window.electronAPI.onUpdateDownloaded(() => {
+    Swal.fire({
+        title: 'دانلود کامل شد',
+        text: 'برنامه آماده نصب است. هم‌اکنون نصب و راه‌اندازی مجدد شود؟',
+        icon: 'success',
+        showCancelButton: true,
+        confirmButtonText: 'نصب و راه‌اندازی مجدد',
+        cancelButtonText: 'بعدا',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.electronAPI.installUpdate();
+        }
+    });
+});

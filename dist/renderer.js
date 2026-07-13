@@ -3909,6 +3909,20 @@
     };
   }
   loadTickets();
+  window.electronAPI.onUpdateDownloaded(() => {
+    import_sweetalert2.default.fire({
+      title: "\u062F\u0627\u0646\u0644\u0648\u062F \u06A9\u0627\u0645\u0644 \u0634\u062F",
+      text: "\u0628\u0631\u0646\u0627\u0645\u0647 \u0622\u0645\u0627\u062F\u0647 \u0646\u0635\u0628 \u0627\u0633\u062A. \u0647\u0645\u200C\u0627\u06A9\u0646\u0648\u0646 \u0646\u0635\u0628 \u0648 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0645\u062C\u062F\u062F \u0634\u0648\u062F\u061F",
+      icon: "success",
+      showCancelButton: true,
+      confirmButtonText: "\u0646\u0635\u0628 \u0648 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0645\u062C\u062F\u062F",
+      cancelButtonText: "\u0628\u0639\u062F\u0627"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.electronAPI.installUpdate();
+      }
+    });
+  });
 })();
 /*! Bundled license information:
 

@@ -4,11 +4,12 @@
   "description": "Desktop ticket manager for Mr. Vala",
   "main": "dist/main.js",
   "scripts": {
+    "postinstall": "electron-builder install-app-deps",
     "build": "tsc && cp src/index.html src/style.css dist/ && cp -r node_modules/@majidh1/jalalidatepicker/dist dist/lib && cp -r node_modules/select2/dist dist/select2 && cp node_modules/jquery/dist/jquery.min.js dist/jquery.min.js && cp -r assets dist/assets && npx esbuild src/renderer.ts --bundle --outfile=dist/renderer.js --target=es2020 --platform=browser",
-    "pack": "npm run build && electron-builder --win",
-    "dist": "npm run build && electron-builder --win --publish always",
     "start": "npm run build && electron .",
-    "seed": "npx ts-node src/seed.ts"
+    "seed": "npx ts-node src/seed.ts",
+    "pack": "npm run build && electron-builder --win",
+    "dist": "npm run build && electron-builder --win --publish always"
   },
   "keywords": [],
   "author": "",
@@ -17,8 +18,7 @@
     "@majidh1/jalalidatepicker": "^1.0.0",
     "better-sqlite3": "^9.4.3",
     "bootstrap": "^5.3.2",
-    "electron": "^28.1.0",
-    "electron-updater": "^6.8.9",
+    "electron-updater": "^6.1.7",
     "html2canvas": "^1.4.1",
     "jquery": "^3.7.1",
     "select2": "^4.1.0-rc.0",
@@ -29,34 +29,34 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/html2canvas": "^1.0.0",
     "@types/jquery": "^3.5.30",
-    "electron-builder": "^26.15.3",
-    "electron-rebuild": "^3.2.9",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1",
     "esbuild": "^0.25.0",
     "typescript": "^5.3.3"
   },
   "build": {
-    "appId": "com.parvazlog.app",
-    "productName": "Parvazlog",
-    "directories": {
-      "output": "release"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "assets/logo.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "assets/logo.png",
-      "uninstallerIcon": "assets/logo.png",
-      "installerHeaderIcon": "assets/logo.png",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "ramangorgin",
-      "repo": "parvazlog"
+  "appId": "com.parvazlog.app",
+  "productName": "Parvazlog",
+  "directories": { "output": "release" },
+  "win": {
+    "target": "portable",
+    "icon": "assets/solid-logo.ico",
+    "signAndEditExecutable": false
+  },
+  "portable": {
+    "artifactName": "Parvazlog.exe"
+  },
+  "extraResources": [
+    {
+      "from": "data",
+      "to": "data",
+      "filter": ["**/*"]
     }
+  ],
+  "publish": {
+    "provider": "github",
+    "owner": "ramangorgin",
+    "repo": "parvazlog"
   }
+}
 }

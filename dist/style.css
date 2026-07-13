@@ -144,3 +144,6 @@ opacity: 1;
 #searchRow {
 margin-bottom: 0.5rem !important;
 }
+#searchDiv {
+    width: 100%;
+}
