@@ -1,6 +1,6 @@
 {
   "name": "parvazlog",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Desktop ticket manager for Mr. Vala",
   "main": "dist/main.js",
   "scripts": {
