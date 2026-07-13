@@ -1,0 +1,50 @@
+body {
+    font-family: Tahoma, sans-serif;
+    background-color: #f8f9fa;
+}
+
+.passenger-row {
+    background: #f9f9ff;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    margin-top: 15px;   /* this provides spacing above the first card as well */
+    transition: all 0.3s ease;
+}
+
+.input-group > .btn {
+    border-radius: 10px 0 0 10px !important; /* RTL: curve on the left side */
+}
+
+@media (max-width: 576px) {
+    .form-row-mobile .col-6 {
+        width: 100%;
+    }
+}
+
+.ticket-preview {
+    background: white;
+    padding: 20px;
+    border: 2px solid #ccc;
+    font-family: Arial, sans-serif;
+    direction: ltr;
+    text-align: left;
+    min-height: 200px;
+}
+
+.stamp-area {
+    border: 2px dashed #999;
+    width: 120px;
+    height: 80px;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+}
+
+.required-note {
+    margin-top: 15px;
+    font-style: italic;
+}

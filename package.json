@@ -1,0 +1,33 @@
+{
+  "name": "parvazlog",
+  "version": "1.0.0",
+  "description": "Desktop ticket manager for Mr. Vala",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc && cp src/index.html src/style.css dist/ && cp -r node_modules/@majidh1/jalalidatepicker/dist dist/lib && cp -r node_modules/select2/dist dist/select2 && cp node_modules/jquery/dist/jquery.min.js dist/jquery.min.js && cp -r assets dist/assets && npx esbuild src/renderer.ts --bundle --outfile=dist/renderer.js --target=es2020 --platform=browser",
+    "start": "npm run build && electron .",
+    "seed": "npx ts-node src/seed.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@majidh1/jalalidatepicker": "^1.0.0",
+    "better-sqlite3": "^9.4.3",
+    "bootstrap": "^5.3.2",
+    "electron": "^28.1.0",
+    "html2canvas": "^1.4.1",
+    "jquery": "^3.7.1",
+    "select2": "^4.1.0-rc.0",
+    "sweetalert2": "^11.26.25",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/html2canvas": "^1.0.0",
+    "@types/jquery": "^3.5.30",
+    "electron-rebuild": "^3.2.9",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.3.3"
+  }
+}
