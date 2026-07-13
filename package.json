@@ -36,28 +36,24 @@
     "typescript": "^5.3.3"
   },
   "build": {
-  "appId": "com.parvazlog.app",
-  "productName": "Parvazlog",
-  "directories": { "output": "release" },
-  "win": {
-    "target": "portable",
-    "icon": "assets/solid-logo.ico",
-    "signAndEditExecutable": false
-  },
-  "portable": {
-    "artifactName": "Parvazlog.exe"
-  },
-  "extraResources": [
-    {
-      "from": "data",
-      "to": "data",
-      "filter": ["**/*"]
+    "appId": "com.parvazlog.app",
+    "productName": "Parvazlog",
+    "directories": { "output": "release" },
+    "win": {
+      "target": "portable",
+      "icon": "assets/solid-logo.ico",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "Parvazlog-${version}.exe"
+    },
+    "extraResources": [
+      { "from": "data", "to": "data", "filter": ["**/*"] }
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "ramangorgin",
+      "repo": "parvazlog"
     }
-  ],
-  "publish": {
-    "provider": "github",
-    "owner": "ramangorgin",
-    "repo": "parvazlog"
   }
-}
 }

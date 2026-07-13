@@ -66,7 +66,7 @@ function autoSeedIfEmpty() {
         console.warn('Excel file has no data rows.');
         return;
     }
-    // ---- Data cleaning helpers (same as in seed.ts) ----
+    // ---- Data cleaning helpers ----
     const cleanString = (val) => (val || '').toString().trim().replace(/^\.+/, '').replace(/\.+$/, '').replace(/\s+/g, ' ').trim();
     const normalizePersian = (str) => str.replace(/[\u200c\u200d\s]/g, '').trim();
     const splitFullName = (fullName) => {
@@ -129,7 +129,7 @@ function autoSeedIfEmpty() {
             (0, utils_1.generateWatcher)(),
             firstName,
             lastName,
-            '', // first_name_english (empty – user will fill later)
+            '', // first_name_english
             '', // last_name_english
             originCity,
             destCity,
@@ -171,23 +171,74 @@ function createWindow() {
 // ---------- App startup ----------
 electron_1.app.whenReady().then(() => {
     (0, database_1.initDatabase)();
-    autoSeedIfEmpty(); // ← auto‑seed runs here, before the window appears
+    autoSeedIfEmpty(); // auto‑seed runs here, before the window appears
     createWindow();
-    // Auto‑updater
+    // ---------- Auto‑updater ----------
     electron_updater_1.autoUpdater.autoDownload = false;
     electron_updater_1.autoUpdater.autoInstallOnAppQuit = true;
     electron_updater_1.autoUpdater.checkForUpdatesAndNotify();
-    electron_updater_1.autoUpdater.on('update-available', (info) => mainWindow?.webContents.send('update-available', info));
-    electron_updater_1.autoUpdater.on('update-not-available', () => mainWindow?.webContents.send('update-not-available'));
-    electron_updater_1.autoUpdater.on('update-downloaded', () => mainWindow?.webContents.send('update-downloaded'));
-    electron_updater_1.autoUpdater.on('error', (err) => mainWindow?.webContents.send('update-error', err));
+    electron_updater_1.autoUpdater.on('checking-for-update', () => {
+        mainWindow?.webContents.send('update-message', 'Checking for updates...');
+    });
+    electron_updater_1.autoUpdater.on('update-available', (info) => {
+        mainWindow?.webContents.send('update-available', info);
+    });
+    electron_updater_1.autoUpdater.on('update-not-available', (info) => {
+        mainWindow?.webContents.send('update-not-available', info);
+    });
+    electron_updater_1.autoUpdater.on('error', (err) => {
+        mainWindow?.webContents.send('update-error', err);
+    });
+    electron_updater_1.autoUpdater.on('update-downloaded', (info) => {
+        mainWindow?.webContents.send('update-downloaded', info);
+    });
     electron_1.ipcMain.handle('start-download', () => electron_updater_1.autoUpdater.downloadUpdate());
     electron_1.ipcMain.on('install-update', () => electron_updater_1.autoUpdater.quitAndInstall());
-    // Menu
-    const menuTemplate = [{
+    // ---------- Application menu ----------
+    const menuTemplate = [
+        {
+            label: 'File',
+            submenu: [
+                { role: 'quit', label: 'Exit' }
+            ]
+        },
+        {
+            label: 'View',
+            submenu: [
+                { role: 'reload' },
+                { role: 'toggleDevTools' },
+                { type: 'separator' },
+                { role: 'zoomIn', label: 'Zoom In' },
+                { role: 'zoomOut', label: 'Zoom Out' },
+                { role: 'resetZoom', label: 'Reset Zoom' }
+            ]
+        },
+        {
             label: 'Help',
-            submenu: [{ label: 'Check for Update', click: () => electron_updater_1.autoUpdater.checkForUpdates() }]
-        }];
+            submenu: [
+                {
+                    label: 'Check for Update',
+                    click: () => {
+                        // Show the loading indicator in the UI
+                        mainWindow?.webContents.send('update-message', 'Checking for updates...');
+                        let checkStarted = false;
+                        const timeout = setTimeout(() => {
+                            if (!checkStarted) {
+                                // In dev mode, no provider exists – fake a "not available" response
+                                mainWindow?.webContents.send('update-not-available', {});
+                            }
+                        }, 3000); // wait 3 seconds before falling back
+                        const onChecking = () => {
+                            checkStarted = true;
+                            clearTimeout(timeout);
+                        };
+                        electron_updater_1.autoUpdater.once('checking-for-update', onChecking);
+                        electron_updater_1.autoUpdater.checkForUpdates();
+                    }
+                }
+            ]
+        }
+    ];
     electron_1.Menu.setApplicationMenu(electron_1.Menu.buildFromTemplate(menuTemplate));
     electron_1.app.on('activate', () => {
         if (electron_1.BrowserWindow.getAllWindows().length === 0)

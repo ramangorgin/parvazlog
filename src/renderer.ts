@@ -633,8 +633,23 @@ function attachFormEvents(existingTicket?: any) {
 }
 
 // ---------- Auto‑update handlers ----------
+
 if (window.electronAPI) {
+    // Loading indicator
+    let updateSwal: any = null;
+
+    window.electronAPI.onUpdateMessage((msg: string) => {
+        updateSwal = Swal.fire({
+            title: 'در حال بررسی',
+            text: msg,
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+    });
+
     window.electronAPI.onUpdateAvailable((info: any) => {
+        if (updateSwal) Swal.close();
+        updateSwal = null;
         Swal.fire({
             title: 'نسخه جدید موجود است',
             html: `نسخه ${info.version} آماده دانلود است. هم‌اکنون دانلود شود؟`,
@@ -650,10 +665,26 @@ if (window.electronAPI) {
     });
 
     window.electronAPI.onUpdateNotAvailable(() => {
-        // Optionally notify, but for MVP we can leave it silent
+        if (updateSwal) Swal.close();
+        updateSwal = null;
+        Swal.fire({
+            title: 'به‌روزرسانی',
+            text: 'شما از آخرین نسخه استفاده می‌کنید.',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    });
+
+    window.electronAPI.onUpdateError((err: any) => {
+        if (updateSwal) Swal.close();
+        updateSwal = null;
+        Swal.fire('خطا در بررسی به‌روزرسانی', err.message || 'خطای ناشناخته', 'error');
     });
 
     window.electronAPI.onUpdateDownloaded(() => {
+        if (updateSwal) Swal.close();
+        updateSwal = null;
         Swal.fire({
             title: 'دانلود کامل شد',
             text: 'برنامه آماده نصب است. هم‌اکنون نصب و راه‌اندازی مجدد شود؟',
@@ -668,6 +699,5 @@ if (window.electronAPI) {
         });
     });
 }
-
 // ---------- Initial load ----------
 loadTickets();

@@ -37,7 +37,7 @@ function autoSeedIfEmpty() {
         return;
     }
 
-    // ---- Data cleaning helpers (same as in seed.ts) ----
+    // ---- Data cleaning helpers ----
     const cleanString = (val: any) => (val || '').toString().trim().replace(/^\.+/, '').replace(/\.+$/, '').replace(/\s+/g, ' ').trim();
     const normalizePersian = (str: string) => str.replace(/[\u200c\u200d\s]/g, '').trim();
     const splitFullName = (fullName: string) => {
@@ -104,11 +104,11 @@ function autoSeedIfEmpty() {
                                  generateWatcher(),
                                  firstName,
                                  lastName,
-                                 '',                              // first_name_english (empty – user will fill later)
-            '',                              // last_name_english
-            originCity,
-            destCity,
-            getDefaultAirport(originCity),
+                                 '',                              // first_name_english
+                                 '',                              // last_name_english
+                                 originCity,
+                                 destCity,
+                                 getDefaultAirport(originCity),
                                  getDefaultAirport(destCity),
                                  flightDate,
                                  cleanString(row[col['ساعت']] || ''),
@@ -151,27 +151,81 @@ function createWindow() {
 // ---------- App startup ----------
 app.whenReady().then(() => {
     initDatabase();
-    autoSeedIfEmpty();      // ← auto‑seed runs here, before the window appears
+    autoSeedIfEmpty();      // auto‑seed runs here, before the window appears
     createWindow();
 
-    // Auto‑updater
+    // ---------- Auto‑updater ----------
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.checkForUpdatesAndNotify();
 
-    autoUpdater.on('update-available', (info) => mainWindow?.webContents.send('update-available', info));
-    autoUpdater.on('update-not-available', () => mainWindow?.webContents.send('update-not-available'));
-    autoUpdater.on('update-downloaded', () => mainWindow?.webContents.send('update-downloaded'));
-    autoUpdater.on('error', (err) => mainWindow?.webContents.send('update-error', err));
+    autoUpdater.on('checking-for-update', () => {
+        mainWindow?.webContents.send('update-message', 'Checking for updates...');
+    });
+    autoUpdater.on('update-available', (info) => {
+        mainWindow?.webContents.send('update-available', info);
+    });
+    autoUpdater.on('update-not-available', (info) => {
+        mainWindow?.webContents.send('update-not-available', info);
+    });
+    autoUpdater.on('error', (err) => {
+        mainWindow?.webContents.send('update-error', err);
+    });
+    autoUpdater.on('update-downloaded', (info) => {
+        mainWindow?.webContents.send('update-downloaded', info);
+    });
 
     ipcMain.handle('start-download', () => autoUpdater.downloadUpdate());
     ipcMain.on('install-update', () => autoUpdater.quitAndInstall());
 
-    // Menu
-    const menuTemplate: Electron.MenuItemConstructorOptions[] = [{
-        label: 'Help',
-        submenu: [{ label: 'Check for Update', click: () => autoUpdater.checkForUpdates() }]
-    }];
+    // ---------- Application menu ----------
+    const menuTemplate: Electron.MenuItemConstructorOptions[] = [
+        {
+            label: 'File',
+            submenu: [
+                { role: 'quit', label: 'Exit' }
+            ]
+        },
+        {
+            label: 'View',
+            submenu: [
+                { role: 'reload' },
+                { role: 'toggleDevTools' },
+                { type: 'separator' },
+                { role: 'zoomIn', label: 'Zoom In' },
+                { role: 'zoomOut', label: 'Zoom Out' },
+                { role: 'resetZoom', label: 'Reset Zoom' }
+            ]
+        },
+        {
+            label: 'Help',
+            submenu: [
+                {
+                    label: 'Check for Update',
+                    click: () => {
+                        // Show the loading indicator in the UI
+                        mainWindow?.webContents.send('update-message', 'Checking for updates...');
+
+                        let checkStarted = false;
+                        const timeout = setTimeout(() => {
+                            if (!checkStarted) {
+                                // In dev mode, no provider exists – fake a "not available" response
+                                mainWindow?.webContents.send('update-not-available', {});
+                            }
+                        }, 3000);  // wait 3 seconds before falling back
+
+                        const onChecking = () => {
+                            checkStarted = true;
+                            clearTimeout(timeout);
+                        };
+
+                        autoUpdater.once('checking-for-update', onChecking);
+                        autoUpdater.checkForUpdates();
+                    }
+                }
+            ]
+        }
+    ];
     Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
     app.on('activate', () => {
@@ -187,9 +241,11 @@ app.on('window-all-closed', () => {
 ipcMain.handle('db:getAllTickets', () =>
 getDb().prepare('SELECT * FROM tickets ORDER BY row_number ASC').all()
 );
+
 ipcMain.handle('db:getTicketById', (_, id: number) =>
 getDb().prepare('SELECT * FROM tickets WHERE id = ?').get(id)
 );
+
 ipcMain.handle('db:insertTicket', (_, ticket: any) => {
     const stmt = getDb().prepare(`INSERT INTO tickets (
         row_number, reference, watcher, first_name_persian, last_name_persian,
@@ -210,6 +266,7 @@ ipcMain.handle('db:insertTicket', (_, ticket: any) => {
     );
     return info.lastInsertRowid;
 });
+
 ipcMain.handle('db:updateTicket', (_, id: number, ticket: any) => {
     getDb().prepare(`UPDATE tickets SET
     row_number=?, reference=?, watcher=?, first_name_persian=?, last_name_persian=?,
@@ -228,9 +285,11 @@ ipcMain.handle('db:updateTicket', (_, id: number, ticket: any) => {
         ticket.group_id || null, id
     );
 });
+
 ipcMain.handle('db:deleteTicket', (_, id: number) =>
 getDb().prepare('DELETE FROM tickets WHERE id = ?').run(id)
 );
+
 ipcMain.handle('db:getMaxRowNumber', () => {
     const row: any = getDb().prepare('SELECT MAX(row_number) as max FROM tickets').get();
     return row?.max || 0;
