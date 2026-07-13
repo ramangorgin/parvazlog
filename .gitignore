@@ -1,3 +1,33 @@
+# Dependencies
 node_modules/
-tasks.txt
+
+# Build output
+dist/
 release/
+
+# Database files
+*.db
+*.db-journal
+*.db-wal
+
+# Logs
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# Electron builder cache
+.cache/
+
+# My own handnotes for feuture
+tasks.txt
+

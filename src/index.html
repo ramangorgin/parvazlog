@@ -38,10 +38,33 @@
       </div>
     </div>
 
-    <!-- Search bar -->
-    <div class="row mb-2" id="searchRow">
-      <div id="searchDiv" class="col-md-4">
-        <input type="text" id="searchInput" class="form-control" placeholder="جستجو در رکوردها...">
+    <!-- Combined search, sort, and pagination controls (all in one row) -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+      <!-- Left side: sort button and search input -->
+      <div class="d-flex align-items-center gap-2 flex-grow-1">
+        <button id="sortBtn" class="btn btn-outline-secondary btn-sm text-nowrap">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-down-up" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M11.5 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L11 2.707V14.5a.5.5 0 0 0 .5.5zm-7-14a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L4 13.293V1.5a.5.5 0 0 1 .5-.5z"/>
+          </svg>
+          <span id="sortLabel">صعودی</span>
+        </button>
+        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="جستجو در رکوردها..." style="max-width: 250px;">
+      </div>
+
+      <!-- Right side: page size and pagination -->
+      <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0 text-nowrap">تعداد در صفحه:</label>
+        <select id="pageSizeSelect" class="form-select form-select-sm" style="width: auto;">
+          <option value="10">۱۰</option>
+          <option value="50">۵۰</option>
+          <option value="100">۱۰۰</option>
+          <option value="0">همه</option>
+        </select>
+        <div class="btn-group btn-group-sm">
+          <button id="prevPageBtn" class="btn btn-outline-secondary" disabled>قبلی</button>
+          <span id="pageInfo" class="btn btn-outline-secondary disabled" style="cursor: default; opacity: 1;">صفحه ۱ از ۱</span>
+          <button id="nextPageBtn" class="btn btn-outline-secondary" disabled>بعدی</button>
+        </div>
       </div>
     </div>
 

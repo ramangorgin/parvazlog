@@ -3417,6 +3417,9 @@
   var currentPreviewTickets = [];
   var currentPreviewIsFull = true;
   var searchTerm = "";
+  var sortDirection = "asc";
+  var currentPage = 1;
+  var pageSize = 10;
   function computeTotal(price, penalty) {
     return Math.round(price * (1 - penalty / 100));
   }
@@ -3435,9 +3438,28 @@
   }
   async function loadTickets() {
     tickets = await api.getAllTickets();
+    currentPage = 1;
+    renderTable();
+  }
+  function renderTable() {
+    const filter = searchTerm.toLowerCase().trim();
+    const filtered = filter === "" ? tickets : tickets.filter((t) => {
+      const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_number}`.toLowerCase();
+      return text.includes(filter);
+    });
+    const sorted = [...filtered].sort((a, b) => {
+      const diff = a.row_number - b.row_number;
+      return sortDirection === "asc" ? diff : -diff;
+    });
+    const totalPages = pageSize === 0 ? 1 : Math.ceil(sorted.length / pageSize);
+    const start = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
+    const paginated = pageSize === 0 ? sorted : sorted.slice(start, start + pageSize);
+    document.getElementById("pageInfo").textContent = `\u0635\u0641\u062D\u0647 ${currentPage} \u0627\u0632 ${totalPages}`;
+    document.getElementById("prevPageBtn").disabled = currentPage <= 1;
+    document.getElementById("nextPageBtn").disabled = currentPage >= totalPages;
     const tbody = document.getElementById("ticketsTableBody");
     tbody.innerHTML = "";
-    tickets.forEach((t) => {
+    paginated.forEach((t) => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><input type="checkbox" class="ticket-checkbox" data-id="${t.id}"></td>
@@ -3456,15 +3478,6 @@
     });
     bindTableEvents();
     updateMultiButtons();
-    applySearchFilter();
-  }
-  function applySearchFilter() {
-    const filter = searchTerm.toLowerCase().trim();
-    const rows = document.querySelectorAll("#ticketsTableBody tr");
-    rows.forEach((row) => {
-      const text = (row.textContent || "").toLowerCase();
-      row.style.display = filter === "" || text.includes(filter) ? "" : "none";
-    });
   }
   function bindTableEvents() {
     document.querySelectorAll(".edit-btn").forEach((b) => b.addEventListener("click", async (e) => {
@@ -3611,9 +3624,40 @@
     const selected = tickets.filter((t) => ids.includes(t.id));
     if (selected.length) showPreview(selected);
   });
+  document.getElementById("sortBtn").addEventListener("click", () => {
+    sortDirection = sortDirection === "asc" ? "desc" : "asc";
+    document.getElementById("sortLabel").textContent = sortDirection === "asc" ? "\u0635\u0639\u0648\u062F\u06CC" : "\u0646\u0632\u0648\u0644\u06CC";
+    renderTable();
+  });
+  document.getElementById("pageSizeSelect").addEventListener("change", (e) => {
+    pageSize = parseInt(e.target.value);
+    currentPage = 1;
+    renderTable();
+  });
+  document.getElementById("prevPageBtn").addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      renderTable();
+    }
+  });
+  document.getElementById("nextPageBtn").addEventListener("click", () => {
+    const totalPages = pageSize === 0 ? 1 : Math.ceil(
+      tickets.filter((t) => {
+        const filter = searchTerm.toLowerCase().trim();
+        if (filter === "") return true;
+        const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_number}`.toLowerCase();
+        return text.includes(filter);
+      }).length / pageSize
+    );
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderTable();
+    }
+  });
   document.getElementById("searchInput").addEventListener("input", (e) => {
     searchTerm = e.target.value;
-    applySearchFilter();
+    currentPage = 1;
+    renderTable();
   });
   document.getElementById("newTicketBtn").addEventListener("click", () => {
     editingId = null;
@@ -3908,21 +3952,39 @@
       loadTickets();
     };
   }
-  loadTickets();
-  window.electronAPI.onUpdateDownloaded(() => {
-    import_sweetalert2.default.fire({
-      title: "\u062F\u0627\u0646\u0644\u0648\u062F \u06A9\u0627\u0645\u0644 \u0634\u062F",
-      text: "\u0628\u0631\u0646\u0627\u0645\u0647 \u0622\u0645\u0627\u062F\u0647 \u0646\u0635\u0628 \u0627\u0633\u062A. \u0647\u0645\u200C\u0627\u06A9\u0646\u0648\u0646 \u0646\u0635\u0628 \u0648 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0645\u062C\u062F\u062F \u0634\u0648\u062F\u061F",
-      icon: "success",
-      showCancelButton: true,
-      confirmButtonText: "\u0646\u0635\u0628 \u0648 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0645\u062C\u062F\u062F",
-      cancelButtonText: "\u0628\u0639\u062F\u0627"
-    }).then((result) => {
-      if (result.isConfirmed) {
-        window.electronAPI.installUpdate();
-      }
+  if (window.electronAPI) {
+    window.electronAPI.onUpdateAvailable((info) => {
+      import_sweetalert2.default.fire({
+        title: "\u0646\u0633\u062E\u0647 \u062C\u062F\u06CC\u062F \u0645\u0648\u062C\u0648\u062F \u0627\u0633\u062A",
+        html: `\u0646\u0633\u062E\u0647 ${info.version} \u0622\u0645\u0627\u062F\u0647 \u062F\u0627\u0646\u0644\u0648\u062F \u0627\u0633\u062A. \u0647\u0645\u200C\u0627\u06A9\u0646\u0648\u0646 \u062F\u0627\u0646\u0644\u0648\u062F \u0634\u0648\u062F\u061F`,
+        icon: "info",
+        showCancelButton: true,
+        confirmButtonText: "\u062F\u0627\u0646\u0644\u0648\u062F",
+        cancelButtonText: "\u0628\u0639\u062F\u0627"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.electronAPI.startDownload();
+        }
+      });
     });
-  });
+    window.electronAPI.onUpdateNotAvailable(() => {
+    });
+    window.electronAPI.onUpdateDownloaded(() => {
+      import_sweetalert2.default.fire({
+        title: "\u062F\u0627\u0646\u0644\u0648\u062F \u06A9\u0627\u0645\u0644 \u0634\u062F",
+        text: "\u0628\u0631\u0646\u0627\u0645\u0647 \u0622\u0645\u0627\u062F\u0647 \u0646\u0635\u0628 \u0627\u0633\u062A. \u0647\u0645\u200C\u0627\u06A9\u0646\u0648\u0646 \u0646\u0635\u0628 \u0648 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0645\u062C\u062F\u062F \u0634\u0648\u062F\u061F",
+        icon: "success",
+        showCancelButton: true,
+        confirmButtonText: "\u0646\u0635\u0628 \u0648 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0645\u062C\u062F\u062F",
+        cancelButtonText: "\u0628\u0639\u062F\u0627"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.electronAPI.installUpdate();
+        }
+      });
+    });
+  }
+  loadTickets();
 })();
 /*! Bundled license information:
 

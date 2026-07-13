@@ -24,6 +24,9 @@ let passengers: any[] = [];
 let currentPreviewTickets: any[] = [];
 let currentPreviewIsFull = true;
 let searchTerm = '';
+let sortDirection: 'asc' | 'desc' = 'asc';
+let currentPage = 1;
+let pageSize = 10; // default 10
 
 // ---------- Utility ----------
 function computeTotal(price: number, penalty: number): number {
@@ -45,12 +48,41 @@ function unformatPrice(str: string): number {
     return parseInt(toEnglishDigits(str).replace(/,/g, '')) || 0;
 }
 
-// ---------- Load tickets table ----------
+// ---------- Data loading & table rendering ----------
 async function loadTickets() {
     tickets = await api.getAllTickets();
+    currentPage = 1;
+    renderTable();
+}
+
+function renderTable() {
+    // 1. Filter by search term
+    const filter = searchTerm.toLowerCase().trim();
+    const filtered = filter === '' ? tickets : tickets.filter(t => {
+        const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_number}`.toLowerCase();
+        return text.includes(filter);
+    });
+
+    // 2. Sort
+    const sorted = [...filtered].sort((a, b) => {
+        const diff = a.row_number - b.row_number;
+        return sortDirection === 'asc' ? diff : -diff;
+    });
+
+    // 3. Paginate
+    const totalPages = pageSize === 0 ? 1 : Math.ceil(sorted.length / pageSize);
+    const start = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
+    const paginated = pageSize === 0 ? sorted : sorted.slice(start, start + pageSize);
+
+    // 4. Update pagination controls
+    document.getElementById('pageInfo')!.textContent = `صفحه ${currentPage} از ${totalPages}`;
+    (document.getElementById('prevPageBtn') as HTMLButtonElement).disabled = currentPage <= 1;
+    (document.getElementById('nextPageBtn') as HTMLButtonElement).disabled = currentPage >= totalPages;
+
+    // 5. Build table body
     const tbody = document.getElementById('ticketsTableBody')!;
     tbody.innerHTML = '';
-    tickets.forEach((t: any) => {
+    paginated.forEach((t: any) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
         <td><input type="checkbox" class="ticket-checkbox" data-id="${t.id}"></td>
@@ -67,20 +99,13 @@ async function loadTickets() {
         </td>`;
         tbody.appendChild(tr);
     });
+
+    // 6. Re-bind events and update multi-select
     bindTableEvents();
     updateMultiButtons();
-    applySearchFilter();
 }
 
-function applySearchFilter() {
-    const filter = searchTerm.toLowerCase().trim();
-    const rows = document.querySelectorAll('#ticketsTableBody tr');
-    rows.forEach(row => {
-        const text = (row.textContent || '').toLowerCase();
-        (row as HTMLElement).style.display = filter === '' || text.includes(filter) ? '' : 'none';
-    });
-}
-
+// ---------- Table events (edit, delete, preview) ----------
 function bindTableEvents() {
     document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', async (e) => {
         const id = parseInt((e.currentTarget as HTMLElement).dataset.id!);
@@ -251,10 +276,40 @@ document.getElementById('previewSelectedBtn')!.addEventListener('click', () => {
     if (selected.length) showPreview(selected);
 });
 
-// ---------- Search input ----------
+// ---------- Sort, Page size & Pagination controls ----------
+document.getElementById('sortBtn')!.addEventListener('click', () => {
+    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    document.getElementById('sortLabel')!.textContent = sortDirection === 'asc' ? 'صعودی' : 'نزولی';
+    renderTable();
+});
+
+document.getElementById('pageSizeSelect')!.addEventListener('change', (e) => {
+    pageSize = parseInt((e.target as HTMLSelectElement).value);
+    currentPage = 1;
+    renderTable();
+});
+
+document.getElementById('prevPageBtn')!.addEventListener('click', () => {
+    if (currentPage > 1) { currentPage--; renderTable(); }
+});
+
+document.getElementById('nextPageBtn')!.addEventListener('click', () => {
+    const totalPages = pageSize === 0 ? 1 : Math.ceil(
+        tickets.filter(t => {
+            const filter = searchTerm.toLowerCase().trim();
+            if (filter === '') return true;
+            const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_number}`.toLowerCase();
+            return text.includes(filter);
+        }).length / pageSize
+    );
+    if (currentPage < totalPages) { currentPage++; renderTable(); }
+});
+
+// ---------- Search ----------
 document.getElementById('searchInput')!.addEventListener('input', (e) => {
     searchTerm = (e.target as HTMLInputElement).value;
-    applySearchFilter();
+    currentPage = 1;   // reset to first page on new search
+    renderTable();
 });
 
 // ---------- New ticket button ----------
@@ -264,7 +319,7 @@ document.getElementById('newTicketBtn')!.addEventListener('click', () => {
     buildForm();
 });
 
-// ---------- Form building ----------
+// ---------- Form building (unchanged) ----------
 function buildForm(existingTicket?: any) {
     const container = document.getElementById('formContainer')!;
     container.classList.add('visible');
@@ -424,7 +479,7 @@ function buildForm(existingTicket?: any) {
     attachFormEvents(existingTicket);
 }
 
-// ---------- Passenger management ----------
+// ---------- Passenger management (unchanged) ----------
 function renderPassengerInputs() {
     const listDiv = document.getElementById('passengerList')!;
     listDiv.innerHTML = passengers.map((p, idx) => `
@@ -577,21 +632,42 @@ function attachFormEvents(existingTicket?: any) {
     };
 }
 
+// ---------- Auto‑update handlers ----------
+if (window.electronAPI) {
+    window.electronAPI.onUpdateAvailable((info: any) => {
+        Swal.fire({
+            title: 'نسخه جدید موجود است',
+            html: `نسخه ${info.version} آماده دانلود است. هم‌اکنون دانلود شود؟`,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'دانلود',
+            cancelButtonText: 'بعدا',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.electronAPI.startDownload();
+            }
+        });
+    });
+
+    window.electronAPI.onUpdateNotAvailable(() => {
+        // Optionally notify, but for MVP we can leave it silent
+    });
+
+    window.electronAPI.onUpdateDownloaded(() => {
+        Swal.fire({
+            title: 'دانلود کامل شد',
+            text: 'برنامه آماده نصب است. هم‌اکنون نصب و راه‌اندازی مجدد شود؟',
+            icon: 'success',
+            showCancelButton: true,
+            confirmButtonText: 'نصب و راه‌اندازی مجدد',
+            cancelButtonText: 'بعدا',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.electronAPI.installUpdate();
+            }
+        });
+    });
+}
+
 // ---------- Initial load ----------
 loadTickets();
-
-// ---------- update ----------
-window.electronAPI.onUpdateDownloaded(() => {
-    Swal.fire({
-        title: 'دانلود کامل شد',
-        text: 'برنامه آماده نصب است. هم‌اکنون نصب و راه‌اندازی مجدد شود؟',
-        icon: 'success',
-        showCancelButton: true,
-        confirmButtonText: 'نصب و راه‌اندازی مجدد',
-        cancelButtonText: 'بعدا',
-    }).then((result) => {
-        if (result.isConfirmed) {
-            window.electronAPI.installUpdate();
-        }
-    });
-});
