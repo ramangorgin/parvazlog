@@ -138,7 +138,6 @@ async function editTicket(id: number) {
 async function showPreview(ticketsToPreview: any[]) {
     currentPreviewTickets = ticketsToPreview;
 
-    // Ask user with beautiful SweetAlert2 dialog
     const result = await Swal.fire({
         title: 'انتخاب نوع پیش‌نمایش',
         html: 'چه نسخه‌ای را می‌خواهید مشاهده کنید؟',
@@ -152,26 +151,31 @@ async function showPreview(ticketsToPreview: any[]) {
                                    focusCancel: true,
     });
 
-    // If dismissed (clicked outside), do nothing
-    if (result.isDismissed) return;
+    // User clicked outside / pressed Esc → do nothing
+    if (result.isDismissed && result.dismiss !== Swal.DismissReason.cancel) {
+        return;
+    }
 
-    // true if "نسخه کامل" clicked, false for "نسخه مشتری"
-    const isFull = result.isConfirmed;
+    // If we reach here, either "نسخه کامل" was confirmed (isConfirmed = true)
+    // or "نسخه مشتری" was clicked (isDismissed && dismiss == cancel)
+    const isFull = result.isConfirmed;   // true = full version, false = customer version
 
     const modalBody = document.getElementById('previewContent')!;
     let html = '';
     ticketsToPreview.forEach((t, idx) => {
         html += buildPreviewHTML(t, isFull);
-        if (idx < ticketsToPreview.length - 1) html += '<div style="page-break-after: always;"></div>';
+        if (idx < ticketsToPreview.length - 1) {
+            html += '<div style="page-break-after: always;"></div>';
+        }
     });
-        modalBody.innerHTML = html;
+    modalBody.innerHTML = html;
 
-        const modalEl = document.getElementById('previewModal')!;
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
+    const modalEl = document.getElementById('previewModal')!;
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
 
-        (document.getElementById('printPreviewBtn')!).onclick = () => window.print();
-        (document.getElementById('exportPreviewBtn')!).onclick = () => exportPreviewAsImage();
+    (document.getElementById('printPreviewBtn')!).onclick = () => window.print();
+    (document.getElementById('exportPreviewBtn')!).onclick = () => exportPreviewAsImage();
 }
 
 function buildPreviewHTML(ticket: any, isFull: boolean): string {

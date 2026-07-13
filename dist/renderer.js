@@ -3526,13 +3526,17 @@
       reverseButtons: true,
       focusCancel: true
     });
-    if (result.isDismissed) return;
+    if (result.isDismissed && result.dismiss !== import_sweetalert2.default.DismissReason.cancel) {
+      return;
+    }
     const isFull = result.isConfirmed;
     const modalBody = document.getElementById("previewContent");
     let html = "";
     ticketsToPreview.forEach((t, idx) => {
       html += buildPreviewHTML(t, isFull);
-      if (idx < ticketsToPreview.length - 1) html += '<div style="page-break-after: always;"></div>';
+      if (idx < ticketsToPreview.length - 1) {
+        html += '<div style="page-break-after: always;"></div>';
+      }
     });
     modalBody.innerHTML = html;
     const modalEl = document.getElementById("previewModal");
