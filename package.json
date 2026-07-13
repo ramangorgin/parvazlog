@@ -29,6 +29,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/html2canvas": "^1.0.0",
     "@types/jquery": "^3.5.30",
+    "electron-builder": "^26.15.3",
     "electron-rebuild": "^3.2.9",
     "esbuild": "^0.25.0",
     "typescript": "^5.3.3"
