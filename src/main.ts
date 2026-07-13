@@ -1,3 +1,5 @@
+import { autoUpdater } from 'electron-updater';
+import { Menu } from 'electron';
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -25,6 +27,22 @@ function createWindow() {
 
     mainWindow.on('closed', () => { mainWindow = null; });
 }
+autoUpdater.autoDownload = false;     // let user decide
+autoUpdater.autoInstallOnAppQuit = true;
+
+const menuTemplate: any = [
+    {
+        label: 'Help',
+        submenu: [
+            {
+                label: 'Check for Update',
+                click: () => { autoUpdater.checkForUpdates(); }
+            }
+        ]
+    }
+];
+const menu = Menu.buildFromTemplate(menuTemplate);
+Menu.setApplicationMenu(menu);
 
 app.whenReady().then(() => {
     initDatabase();
@@ -102,4 +120,23 @@ ipcMain.handle('save-image', async (_, dataUrl: string, defaultName: string) => 
         return filePath;
     }
     return null;
+});
+
+autoUpdater.on('checking-for-update', () => {
+    mainWindow?.webContents.send('update-message', 'Checking for updates...');
+});
+autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('update-available', info);
+});
+autoUpdater.on('update-not-available', (info) => {
+    mainWindow?.webContents.send('update-not-available', info);
+});
+autoUpdater.on('error', (err) => {
+    mainWindow?.webContents.send('update-error', err);
+});
+autoUpdater.on('download-progress', (progress) => {
+    mainWindow?.webContents.send('download-progress', progress.percent);
+});
+autoUpdater.on('update-downloaded', (info) => {
+    mainWindow?.webContents.send('update-downloaded', info);
 });

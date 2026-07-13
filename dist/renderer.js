@@ -3694,7 +3694,6 @@
     <label class="form-label">\u062D\u062F\u0627\u06A9\u062B\u0631 \u0628\u0627\u0631 (kg)</label>
     <input type="text" id="maxBaggage" class="form-control numeric" value="${existingTicket ? toPersianDigits(String(existingTicket.max_baggage)) : "\u06F2\u06F0"}" required>
     </div>
-
     <div class="col-md-3">
     <label class="form-label">\u0646\u0627\u0638\u0631 (\u06F8 \u0631\u0642\u0645\u06CC)</label>
     <div class="input-group">
@@ -3709,7 +3708,6 @@
     <button type="button" class="btn btn-outline-secondary auto-ref" title="\u062A\u0648\u0644\u06CC\u062F \u062A\u0635\u0627\u062F\u0641\u06CC">${refreshSVG}</button>
     </div>
     </div>
-
     <div class="col-md-6">
     <label class="form-label">\u0642\u06CC\u0645\u062A \u0628\u0644\u06CC\u0637 (\u0631\u06CC\u0627\u0644)</label>
     <input type="text" id="ticketPrice" class="form-control numeric price-input" value="${existingTicket ? formatPrice(String(existingTicket.ticket_price)) : ""}" required>
@@ -3723,7 +3721,6 @@
     <label class="form-label">\u0642\u06CC\u0645\u062A \u06A9\u0644</label>
     <input type="text" id="totalPrice" class="form-control" readonly>
     </div>
-
     <div class="col-12 mt-4">
     <h5 class="mb-3" style="color: #2c3e50;">\u0645\u0633\u0627\u0641\u0631\u0627\u0646</h5>
     <div id="passengerList"></div>
@@ -3732,7 +3729,6 @@
     \u0627\u0641\u0632\u0648\u062F\u0646 \u0645\u0633\u0627\u0641\u0631
     </button>
     </div>
-
     <div class="col-12 d-flex justify-content-end gap-3 mt-4">
     <button type="button" id="cancelFormBtn" class="btn btn-outline-secondary btn-lg px-5">\u0627\u0646\u0635\u0631\u0627\u0641</button>
     <button type="submit" class="btn btn-success btn-lg px-5">\u0630\u062E\u06CC\u0631\u0647</button>

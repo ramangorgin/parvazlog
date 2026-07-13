@@ -1,8 +1,8 @@
 /* ===== Vazirmatn Variable Font ===== */
 @font-face {
     font-family: 'Vazirmatn';
-    src: url('assets/fonts/Vazirmatn[wght].woff2') format('woff2 supports variations'),
-    url('assets/fonts/Vazirmatn[wght].woff2') format('woff2-variations');
+    src: url('assets/fonts/Vazirmatn.woff2') format('woff2 supports variations'),
+    url('assets/fonts/Vazirmatn.woff2') format('woff2-variations');
     font-weight: 100 900;
     font-style: normal;
     font-display: swap;
@@ -22,13 +22,11 @@ body {
     line-height: 1.6;
 }
 
-/* Ensure all form controls use the font */
 input, select, textarea, button, .form-control, .form-select, .btn {
     font-family: var(--body-font-family) !important;
     font-size: inherit;
 }
 
-/* Select2 dropdown */
 .select2-container--default .select2-selection--single,
 .select2-container--default .select2-search--dropdown .select2-search__field,
 .select2-dropdown {
@@ -65,7 +63,7 @@ input, select, textarea, button, .form-control, .form-select, .btn {
     margin-bottom: 20px;
     direction: ltr;
     text-align: left;
-    font-family: Arial, sans-serif;   /* English preview remains Arial */
+    font-family: Arial, sans-serif;
 }
 .stamp-area {
     border: 2px dashed #aaa;
@@ -112,7 +110,7 @@ input, select, textarea, button, .form-control, .form-select, .btn {
 
 /* ===== RTL input‑group fix ===== */
 .input-group > .btn {
-    border-radius: 0 10px 10px 0 !important;
+    border-radius: 10px 0 0 10px !important;
 }
 
 /* ===== Modal footer buttons ===== */
@@ -121,19 +119,16 @@ input, select, textarea, button, .form-control, .form-select, .btn {
     font-size: 0.95rem;
 }
 
-/* ===== Form container fade ===== */
+/* ===== Form container show/hide ===== */
 #formContainer {
+max-height: 0;
+overflow: hidden;
+transition: max-height 0.3s ease, opacity 0.3s ease;
 opacity: 0;
-transition: opacity 0.3s ease;
-pointer-events: none;
 }
 #formContainer.visible {
+max-height: 5000px;
 opacity: 1;
-pointer-events: auto;
-}
-
-#searchDiv {
-    width: 100%;
 }
 
 /* ===== Smooth table row appearance ===== */
@@ -143,4 +138,12 @@ pointer-events: auto;
 @keyframes fadeInRow {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Search bar spacing ===== */
+#searchRow {
+margin-bottom: 0.5rem !important;
+}
+#searchDiv {
+    width: 100%;
 }

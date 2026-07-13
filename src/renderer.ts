@@ -231,13 +231,11 @@ async function exportPreviewAsImage() {
         if (filePath) {
             savedCount++;
         } else {
-            // User cancelled the save dialog
             break;
         }
     }
 
     if (savedCount === 0) {
-        // All cancelled, do nothing (or show a silent cancel)
         return;
     } else if (savedCount < ticketsToExport.length) {
         Swal.fire('توقف', `${savedCount} فایل ذخیره شد. باقی لغو گردید.`, 'warning');
@@ -344,7 +342,6 @@ function buildForm(existingTicket?: any) {
     <label class="form-label">حداکثر بار (kg)</label>
     <input type="text" id="maxBaggage" class="form-control numeric" value="${existingTicket ? toPersianDigits(String(existingTicket.max_baggage)) : '۲۰'}" required>
     </div>
-
     <div class="col-md-3">
     <label class="form-label">ناظر (۸ رقمی)</label>
     <div class="input-group">
@@ -359,7 +356,6 @@ function buildForm(existingTicket?: any) {
     <button type="button" class="btn btn-outline-secondary auto-ref" title="تولید تصادفی">${refreshSVG}</button>
     </div>
     </div>
-
     <div class="col-md-6">
     <label class="form-label">قیمت بلیط (ریال)</label>
     <input type="text" id="ticketPrice" class="form-control numeric price-input" value="${existingTicket ? formatPrice(String(existingTicket.ticket_price)) : ''}" required>
@@ -373,7 +369,6 @@ function buildForm(existingTicket?: any) {
     <label class="form-label">قیمت کل</label>
     <input type="text" id="totalPrice" class="form-control" readonly>
     </div>
-
     <div class="col-12 mt-4">
     <h5 class="mb-3" style="color: #2c3e50;">مسافران</h5>
     <div id="passengerList"></div>
@@ -382,7 +377,6 @@ function buildForm(existingTicket?: any) {
     افزودن مسافر
     </button>
     </div>
-
     <div class="col-12 d-flex justify-content-end gap-3 mt-4">
     <button type="button" id="cancelFormBtn" class="btn btn-outline-secondary btn-lg px-5">انصراف</button>
     <button type="submit" class="btn btn-success btn-lg px-5">ذخیره</button>
@@ -483,7 +477,6 @@ function attachFormEvents(existingTicket?: any) {
     document.getElementById('cancelFormBtn')!.onclick = () => {
         const container = document.getElementById('formContainer')!;
         container.classList.remove('visible');
-        // Optionally clear form after transition, but we'll just hide it
     };
 
     document.querySelectorAll('.numeric').forEach(inp => {
