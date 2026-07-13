@@ -1,14 +1,50 @@
 import Database from 'better-sqlite3';
 import * as XLSX from 'xlsx';
-import path from 'path';
-import { toEnglishDigits } from './utils';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
+import { toEnglishDigits, generateReference, generateWatcher } from './utils';
+import { cityAirports, airlines, getCityEnglish, getAirlineEnglish } from './dictionary';
 
-// This script runs standalone (outside Electron) using ts-node.
-// It reads data/1404.xlsx and inserts into parvazlog.db in userData (same location as app).
-// We'll create the db in the same place: %APPDATA%/parvazlog/parvazlog.db (or similar)
-// For simplicity, we recreate the database path similar to Electron's userData.
-// In electron userData is %APPDATA%/parvazlog, so:
-const dbPath = path.join(process.env.APPDATA || '', 'parvazlog', 'parvazlog.db');
+// ---------- Normalize a Persian string for matching ----------
+function normalizePersian(str: string): string {
+    return str
+    .replace(/[\u200c\u200d\s]/g, '') // remove ZWNJ, ZWJ, and all spaces
+    .trim();
+}
+
+// ---------- Utility: clean a string cell ----------
+function cleanString(val: any): string {
+    if (val === undefined || val === null) return '';
+    return val
+    .toString()
+    .trim()
+    .replace(/^\.+/, '')
+    .replace(/\.+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// ---------- Determine user data path ----------
+function getUserDataPath(): string {
+    const appName = 'parvazlog';
+    if (process.platform === 'win32') {
+        return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), appName);
+    } else if (process.platform === 'darwin') {
+        return path.join(os.homedir(), 'Library', 'Application Support', appName);
+    } else {
+        return path.join(os.homedir(), '.config', appName);
+    }
+}
+
+const dbPath = path.join(getUserDataPath(), 'parvazlog.db');
+console.log(`Using database at: ${dbPath}`);
+
+const dir = path.dirname(dbPath);
+if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+}
+
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
@@ -38,44 +74,188 @@ CREATE TABLE IF NOT EXISTS tickets (
 );
 `);
 
-const workbook = XLSX.readFile(path.join(__dirname, '..', 'data', '1404.xlsx'));
+console.log('Clearing old records...');
+db.exec('DELETE FROM tickets');
+console.log('Old records removed.');
+
+// ---------- Helper functions ----------
+function splitFullName(fullName: string): { firstName: string; lastName: string } {
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length === 0) return { firstName: '', lastName: '' };
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
+function getDefaultAirportForCity(persianCity: string): string {
+    const normalizedInput = normalizePersian(persianCity);
+    const match = cityAirports.find(c => normalizePersian(c.persianCity) === normalizedInput);
+    if (!match) {
+        console.warn(`City not found in dictionary: "${persianCity}", using city name as airport.`);
+        return persianCity;
+    }
+    return match.airportPersian;
+}
+
+function parseAirlineAndFlight(raw: string): { flightNumber: string; airlinePersian: string } {
+    if (!raw) return { flightNumber: '', airlinePersian: '' };
+    const parts = raw.trim().split(/\s+/);
+    if (parts.length === 0) return { flightNumber: '', airlinePersian: '' };
+
+    let airline = '';
+    let flightNumber = '';
+
+    for (let i = parts.length - 1; i >= 0; i--) {
+        const candidate = parts.slice(i).join(' ');
+        const found = airlines.find(a => a.persianName === candidate);
+        if (found) {
+            airline = candidate;
+            flightNumber = parts.slice(0, i).join('');
+            break;
+        }
+    }
+
+    if (!airline) {
+        if (parts.length === 1) {
+            flightNumber = parts[0];
+            airline = 'نامشخص';
+        } else {
+            airline = parts[parts.length - 1];
+            flightNumber = parts.slice(0, -1).join('');
+        }
+    }
+
+    return { flightNumber, airlinePersian: airline };
+}
+
+function mapAirlineToPersian(raw: string): string {
+    const found = airlines.find(a => a.persianName === raw);
+    return found ? found.persianName : raw;
+}
+
+// ---------- Read Excel file ----------
+const excelPath = path.join(__dirname, '..', 'data', '1404.xlsx');
+if (!fs.existsSync(excelPath)) {
+    console.error(`Excel file not found: ${excelPath}`);
+    process.exit(1);
+}
+
+const workbook = XLSX.readFile(excelPath);
 const sheet = workbook.Sheets[workbook.SheetNames[0]];
 const rows: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-// Assuming first row is header; actual data starts row 2
-// Map columns: adjust indexes according to your Excel structure
-// This is a template; you must match the exact columns from the provided Excel.
+if (rows.length < 2) {
+    console.error('Excel file has no data rows.');
+    process.exit(1);
+}
+
+const header: string[] = rows[0].map((h: string) => h.trim());
+console.log('Header row:', header);
+
+const col: Record<string, number> = {};
+header.forEach((h, idx) => { col[h] = idx; });
+
+const requiredCols = [
+    'ردیف', 'نام و نام خانوادگی', 'مبدأ', 'مقصد',
+'تاریخ پرواز', 'ساعت', 'مبلغ بلیط (ریال)',
+'درصد جریمه', 'مبلغ کل (ریال)', 'ایرلاین و شماره پرواز'
+];
+for (const c of requiredCols) {
+    if (col[c] === undefined) {
+        console.error(`Missing column: ${c}`);
+        process.exit(1);
+    }
+}
+
 const insert = db.prepare(`
-INSERT INTO tickets (row_number, reference, watcher, first_name_persian, last_name_persian, first_name_english, last_name_english, origin_city, destination_city, origin_airport, destination_airport, flight_date, flight_time, ticket_price, penalty_percent, total_price, max_baggage, airline, flight_number)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tickets (
+    row_number, reference, watcher,
+    first_name_persian, last_name_persian,
+    first_name_english, last_name_english,
+    origin_city, destination_city,
+    origin_airport, destination_airport,
+    flight_date, flight_time,
+    ticket_price, penalty_percent, total_price,
+    max_baggage, airline, flight_number,
+    group_id
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 `);
 
 const insertMany = db.transaction((records: any[]) => {
-    for (const rec of records) {
-        insert.run(rec);
-    }
+    for (const rec of records) insert.run(rec);
 });
 
-const recordsToInsert = [];
+const recordsToInsert: any[] = [];
+let rowCount = 0;
+
 for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row || row.length < 19) continue; // skip incomplete
-    // Convert string numbers to English and proper types
-    const ticketPrice = parseInt(toEnglishDigits(String(row[12] || '0')));
-    const penalty = parseInt(toEnglishDigits(String(row[13] || '0')));
-    const totalPrice = parseInt(toEnglishDigits(String(row[14] || '0')));
+    if (!row || row.length === 0) continue;
+
+    const rowNumberRaw = cleanString(row[col['ردیف']]);
+    const fullName = cleanString(row[col['نام و نام خانوادگی']]);
+    const originCityRaw = cleanString(row[col['مبدأ']]);
+    const destCityRaw = cleanString(row[col['مقصد']]);
+    const flightDateRaw = cleanString(row[col['تاریخ پرواز']]);
+    const flightTimeRaw = cleanString(row[col['ساعت']]);
+    const ticketPriceRaw = cleanString(row[col['مبلغ بلیط (ریال)']]);
+    const penaltyRaw = cleanString(row[col['درصد جریمه']]);
+    const totalPriceRaw = cleanString(row[col['مبلغ کل (ریال)']]);
+    const airlineFlightRaw = cleanString(row[col['ایرلاین و شماره پرواز']]);
+
+    if (!fullName || !originCityRaw || !destCityRaw || !flightDateRaw) {
+        console.warn(`Skipping row ${i + 1}: missing essential fields.`);
+        continue;
+    }
+
+    const { firstName, lastName } = splitFullName(fullName);
+    const originCity = originCityRaw;
+    const destCity = destCityRaw;
+    const originAirport = getDefaultAirportForCity(originCity);
+    const destAirport = getDefaultAirportForCity(destCity);
+    const flightDate = flightDateRaw;
+    const flightTime = flightTimeRaw.replace(/\./g, ':');
+    const ticketPrice = parseInt(toEnglishDigits(ticketPriceRaw)) || 0;
+    const penaltyPercent = parseInt(toEnglishDigits(penaltyRaw)) || 0;
+    let totalPrice = parseInt(toEnglishDigits(totalPriceRaw)) || 0;
+    if (!totalPriceRaw || totalPriceRaw === '') {
+        totalPrice = Math.round(ticketPrice * (1 - penaltyPercent / 100));
+    }
+
+    const { flightNumber, airlinePersian } = parseAirlineAndFlight(airlineFlightRaw);
+    const finalAirline = mapAirlineToPersian(airlinePersian);
+    const maxBaggage = 20;
+    const watcher = generateWatcher();
+    const reference = generateReference();
+
     recordsToInsert.push([
-        i, // row_number
-        row[1], row[2],
-        row[3], row[4], row[5], row[6],
-        row[7], row[8], row[9], row[10],
-        row[11], row[12],
-        ticketPrice, penalty, totalPrice,
-        parseInt(toEnglishDigits(String(row[15] || '0'))),
-                         row[17], row[18]
+        parseInt(rowNumberRaw) || rowCount + 1,
+                         reference,
+                         watcher,
+                         firstName,
+                         lastName,
+                         '',  // first_name_english
+                         '',  // last_name_english
+                         originCity,
+                         destCity,
+                         originAirport,
+                         destAirport,
+                         flightDate,
+                         flightTime,
+                         ticketPrice,
+                         penaltyPercent,
+                         totalPrice,
+                         maxBaggage,
+                         finalAirline,
+                         flightNumber,
+                         null
     ]);
+    rowCount++;
 }
 
-insertMany(recordsToInsert);
-console.log(`Seeded ${recordsToInsert.length} historical records.`);
+if (recordsToInsert.length > 0) {
+    insertMany(recordsToInsert);
+    console.log(`Successfully seeded ${recordsToInsert.length} records.`);
+} else {
+    console.log('No valid records found.');
+}
+
 db.close();
