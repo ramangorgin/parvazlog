@@ -1,43 +1,74 @@
-body {
-    font-family: Tahoma, sans-serif;
-    background-color: #f8f9fa;
+/* ===== Vazirmatn Variable Font ===== */
+@font-face {
+    font-family: 'Vazirmatn';
+    src: url('assets/fonts/Vazirmatn[wght].woff2') format('woff2 supports variations'),
+    url('assets/fonts/Vazirmatn[wght].woff2') format('woff2-variations');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
 }
 
-.passenger-row {
-    background: #f9f9ff;
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    padding: 15px;
-    margin-bottom: 15px;
-    margin-top: 15px;   /* this provides spacing above the first card as well */
+/* ===== Base Styles ===== */
+:root {
+    --base-font-size: 16px;          /* change this to scale all text */
+    --body-font-family: 'Vazirmatn', Tahoma, sans-serif;
+}
+
+body {
+    font-family: var(--body-font-family);
+    font-size: var(--base-font-size);
+    background: linear-gradient(135deg, #f0f4ff 0%, #e6f0fa 100%);
+    min-height: 100vh;
+    line-height: 1.6;
+}
+
+/* Ensure all form controls use the font */
+input, select, textarea, button, .form-control, .form-select, .btn {
+    font-family: var(--body-font-family) !important;
+    font-size: inherit;
+}
+
+/* Select2 dropdown */
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-search--dropdown .select2-search__field,
+.select2-dropdown {
+    font-family: var(--body-font-family) !important;
+    font-size: inherit;
+}
+
+/* ===== Card & Ticket Styles ===== */
+.card {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
 }
 
-.input-group > .btn {
-    border-radius: 10px 0 0 10px !important; /* RTL: curve on the left side */
+.btn {
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
-.modal-footer .btn {
-    min-width: 130px;
-    font-size: 0.95rem;
-}
-@media (max-width: 576px) {
-    .form-row-mobile .col-6 {
-        width: 100%;
-    }
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
 }
 
 .ticket-preview {
     background: white;
     padding: 20px;
     border: 2px solid #ccc;
-    font-family: Arial, sans-serif;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
     direction: ltr;
     text-align: left;
-    min-height: 200px;
+    font-family: Arial, sans-serif;   /* English preview remains Arial */
 }
-
 .stamp-area {
-    border: 2px dashed #999;
+    border: 2px dashed #aaa;
     width: 120px;
     height: 80px;
     margin-top: 20px;
@@ -45,9 +76,47 @@ body {
     align-items: center;
     justify-content: center;
     color: #999;
+    border-radius: 8px;
 }
-
 .required-note {
     margin-top: 15px;
     font-style: italic;
+    color: #d9534f;
+}
+
+/* ===== Passenger Cards ===== */
+.passenger-row {
+    background: #f9f9ff;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 15px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+.passenger-row:hover {
+    background: #f0f4ff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.form-label {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #344767;
+}
+
+/* ===== Button sizing ===== */
+.btn-success, .btn-secondary {
+    min-width: 120px;
+}
+
+/* ===== RTL input‑group fix ===== */
+.input-group > .btn {
+    border-radius: 0 10px 10px 0 !important;
+}
+
+/* ===== Modal footer buttons ===== */
+.modal-footer .btn {
+    min-width: 130px;
+    font-size: 0.95rem;
 }
