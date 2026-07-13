@@ -135,10 +135,28 @@ async function editTicket(id: number) {
 }
 
 // ---------- Preview / Print / Export ----------
-function showPreview(ticketsToPreview: any[]) {
+async function showPreview(ticketsToPreview: any[]) {
     currentPreviewTickets = ticketsToPreview;
-    const version = confirm('نمایش کامل (آژانس)؟\nOK = نسخه کامل\nCancel = نسخه مشتری');
-    const isFull = version;
+
+    // Ask user with beautiful SweetAlert2 dialog
+    const result = await Swal.fire({
+        title: 'انتخاب نوع پیش‌نمایش',
+        html: 'چه نسخه‌ای را می‌خواهید مشاهده کنید؟',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'نسخه کامل (آژانس)',
+                                   cancelButtonText: 'نسخه مشتری',
+                                   confirmButtonColor: '#3085d6',
+                                   cancelButtonColor: '#f0ad4e',
+                                   reverseButtons: true,
+                                   focusCancel: true,
+    });
+
+    // If dismissed (clicked outside), do nothing
+    if (result.isDismissed) return;
+
+    // true if "نسخه کامل" clicked, false for "نسخه مشتری"
+    const isFull = result.isConfirmed;
 
     const modalBody = document.getElementById('previewContent')!;
     let html = '';

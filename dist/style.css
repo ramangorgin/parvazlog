@@ -16,7 +16,10 @@ body {
 .input-group > .btn {
     border-radius: 10px 0 0 10px !important; /* RTL: curve on the left side */
 }
-
+.modal-footer .btn {
+    min-width: 130px;
+    font-size: 0.95rem;
+}
 @media (max-width: 576px) {
     .form-row-mobile .col-6 {
         width: 100%;

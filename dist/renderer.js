@@ -3512,10 +3512,22 @@
     }];
     buildForm(ticket);
   }
-  function showPreview(ticketsToPreview) {
+  async function showPreview(ticketsToPreview) {
     currentPreviewTickets = ticketsToPreview;
-    const version = confirm("\u0646\u0645\u0627\u06CC\u0634 \u06A9\u0627\u0645\u0644 (\u0622\u0698\u0627\u0646\u0633)\u061F\nOK = \u0646\u0633\u062E\u0647 \u06A9\u0627\u0645\u0644\nCancel = \u0646\u0633\u062E\u0647 \u0645\u0634\u062A\u0631\u06CC");
-    const isFull = version;
+    const result = await import_sweetalert2.default.fire({
+      title: "\u0627\u0646\u062A\u062E\u0627\u0628 \u0646\u0648\u0639 \u067E\u06CC\u0634\u200C\u0646\u0645\u0627\u06CC\u0634",
+      html: "\u0686\u0647 \u0646\u0633\u062E\u0647\u200C\u0627\u06CC \u0631\u0627 \u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u06CC\u062F \u0645\u0634\u0627\u0647\u062F\u0647 \u06A9\u0646\u06CC\u062F\u061F",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "\u0646\u0633\u062E\u0647 \u06A9\u0627\u0645\u0644 (\u0622\u0698\u0627\u0646\u0633)",
+      cancelButtonText: "\u0646\u0633\u062E\u0647 \u0645\u0634\u062A\u0631\u06CC",
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#f0ad4e",
+      reverseButtons: true,
+      focusCancel: true
+    });
+    if (result.isDismissed) return;
+    const isFull = result.isConfirmed;
     const modalBody = document.getElementById("previewContent");
     let html = "";
     ticketsToPreview.forEach((t, idx) => {
