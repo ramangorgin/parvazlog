@@ -116,8 +116,7 @@ function getSelectedIds(): number[] {
 
 function updateMultiButtons() {
     const sel = getSelectedIds();
-    (document.getElementById('printSelectedBtn') as HTMLButtonElement).disabled = sel.length === 0;
-    (document.getElementById('exportSelectedBtn') as HTMLButtonElement).disabled = sel.length === 0;
+    (document.getElementById('previewSelectedBtn') as HTMLButtonElement).disabled = sel.length === 0;
 }
 
 // ---------- Edit ticket ----------
@@ -218,43 +217,17 @@ async function exportPreviewAsImage() {
     }
 }
 
-// ---------- Multi‑select buttons ----------
-document.getElementById('printSelectedBtn')!.addEventListener('click', () => {
-    const ids = getSelectedIds();
-    const selected = tickets.filter(t => ids.includes(t.id));
-    if (selected.length) showPreview(selected);
-});
-document.getElementById('exportSelectedBtn')!.addEventListener('click', async () => {
-    const ids = getSelectedIds();
-    const selected = tickets.filter(t => ids.includes(t.id));
-    if (!selected.length) return;
-
-    const version = confirm('خروجی نسخه کامل (آژانس)؟\nOK = کامل\nCancel = مشتری');
-    const isFull = version;
-    const container = document.createElement('div');
-    container.style.cssText = 'position:absolute;left:-9999px;top:0;';
-    document.body.appendChild(container);
-
-    selected.forEach(t => {
-        const div = document.createElement('div');
-        div.innerHTML = buildPreviewHTML(t, isFull);
-        container.appendChild(div);
-    });
-
-    const canvas = await html2canvas(container, { scale: 2 });
-    document.body.removeChild(container);
-    const dataUrl = canvas.toDataURL('image/png');
-    const t0 = selected[0];
-    const year = t0.flight_date.split('/')[0];
-    const defaultName = selected.length === 1 ? `${year}.${t0.row_number}.png` : `${year}.multi.png`;
-    await api.saveImage(dataUrl, defaultName);
-});
-
 // ---------- Form building ----------
 document.getElementById('newTicketBtn')!.addEventListener('click', () => {
     editingId = null;
     passengers = [{ firstNameFa: '', lastNameFa: '', firstNameEn: '', lastNameEn: '' }];
     buildForm();
+});
+
+document.getElementById('previewSelectedBtn')!.addEventListener('click', () => {
+    const ids = getSelectedIds();
+    const selected = tickets.filter(t => ids.includes(t.id));
+    if (selected.length) showPreview(selected);
 });
 
 function buildForm(existingTicket?: any) {

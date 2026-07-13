@@ -1876,7 +1876,7 @@
           if (innerParams.input) {
             handleConfirmOrDenyWithInput(instance, "confirm");
           } else {
-            confirm2(instance, true);
+            confirm(instance, true);
           }
         };
         const handleDenyButtonClick = (instance) => {
@@ -1908,7 +1908,7 @@
           } else if (type === "deny") {
             deny(instance, inputValue);
           } else {
-            confirm2(instance, inputValue);
+            confirm(instance, inputValue);
           }
         };
         const handleInputValidator = (instance, inputValue, type) => {
@@ -1923,7 +1923,7 @@
             } else if (type === "deny") {
               deny(instance, inputValue);
             } else {
-              confirm2(instance, inputValue);
+              confirm(instance, inputValue);
             }
           });
         };
@@ -1971,7 +1971,7 @@
         const rejectWith = (instance, error2) => {
           instance.rejectPromise(error2);
         };
-        const confirm2 = (instance, value) => {
+        const confirm = (instance, value) => {
           const innerParams = privateProps.innerParams.get(instance);
           if (innerParams.showLoaderOnConfirm) {
             showLoading();
@@ -3497,8 +3497,7 @@
   }
   function updateMultiButtons() {
     const sel = getSelectedIds();
-    document.getElementById("printSelectedBtn").disabled = sel.length === 0;
-    document.getElementById("exportSelectedBtn").disabled = sel.length === 0;
+    document.getElementById("previewSelectedBtn").disabled = sel.length === 0;
   }
   async function editTicket(id) {
     const ticket = await api.getTicketById(id);
@@ -3582,37 +3581,15 @@
       await api.saveImage(dataUrl, "ticket.png");
     }
   }
-  document.getElementById("printSelectedBtn").addEventListener("click", () => {
-    const ids = getSelectedIds();
-    const selected = tickets.filter((t) => ids.includes(t.id));
-    if (selected.length) showPreview(selected);
-  });
-  document.getElementById("exportSelectedBtn").addEventListener("click", async () => {
-    const ids = getSelectedIds();
-    const selected = tickets.filter((t) => ids.includes(t.id));
-    if (!selected.length) return;
-    const version = confirm("\u062E\u0631\u0648\u062C\u06CC \u0646\u0633\u062E\u0647 \u06A9\u0627\u0645\u0644 (\u0622\u0698\u0627\u0646\u0633)\u061F\nOK = \u06A9\u0627\u0645\u0644\nCancel = \u0645\u0634\u062A\u0631\u06CC");
-    const isFull = version;
-    const container = document.createElement("div");
-    container.style.cssText = "position:absolute;left:-9999px;top:0;";
-    document.body.appendChild(container);
-    selected.forEach((t) => {
-      const div = document.createElement("div");
-      div.innerHTML = buildPreviewHTML(t, isFull);
-      container.appendChild(div);
-    });
-    const canvas = await html2canvas(container, { scale: 2 });
-    document.body.removeChild(container);
-    const dataUrl = canvas.toDataURL("image/png");
-    const t0 = selected[0];
-    const year = t0.flight_date.split("/")[0];
-    const defaultName = selected.length === 1 ? `${year}.${t0.row_number}.png` : `${year}.multi.png`;
-    await api.saveImage(dataUrl, defaultName);
-  });
   document.getElementById("newTicketBtn").addEventListener("click", () => {
     editingId = null;
     passengers = [{ firstNameFa: "", lastNameFa: "", firstNameEn: "", lastNameEn: "" }];
     buildForm();
+  });
+  document.getElementById("previewSelectedBtn").addEventListener("click", () => {
+    const ids = getSelectedIds();
+    const selected = tickets.filter((t) => ids.includes(t.id));
+    if (selected.length) showPreview(selected);
   });
   function buildForm(existingTicket) {
     const container = document.getElementById("formContainer");
