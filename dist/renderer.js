@@ -3415,6 +3415,7 @@
   var editingId = null;
   var passengers = [];
   var currentPreviewTickets = [];
+  var currentPreviewIsFull = true;
   function computeTotal(price, penalty) {
     return Math.round(price * (1 - penalty / 100));
   }
@@ -3529,6 +3530,7 @@
       return;
     }
     const isFull = result.isConfirmed;
+    currentPreviewIsFull = isFull;
     const modalBody = document.getElementById("previewContent");
     let html = "";
     ticketsToPreview.forEach((t, idx) => {
@@ -3570,16 +3572,25 @@
         </div>`;
   }
   async function exportPreviewAsImage() {
-    const modalBody = document.getElementById("previewContent");
-    const canvas = await html2canvas(modalBody, { scale: 2 });
-    const dataUrl = canvas.toDataURL("image/png");
-    if (currentPreviewTickets.length) {
-      const t = currentPreviewTickets[0];
-      const year = t.flight_date.split("/")[0];
-      await api.saveImage(dataUrl, `${year}.${t.row_number}.png`);
-    } else {
-      await api.saveImage(dataUrl, "ticket.png");
+    const ticketsToExport = currentPreviewTickets;
+    if (!ticketsToExport.length) return;
+    for (const ticket of ticketsToExport) {
+      const container = document.createElement("div");
+      container.style.cssText = "position:absolute;left:-9999px;top:0;";
+      container.innerHTML = buildPreviewHTML(ticket, currentPreviewIsFull);
+      document.body.appendChild(container);
+      const canvas = await html2canvas(container, { scale: 2 });
+      document.body.removeChild(container);
+      const dataUrl = canvas.toDataURL("image/png");
+      const year = ticket.flight_date.split("/")[0];
+      const fileName = `${year}.${ticket.row_number}.png`;
+      await api.saveImage(dataUrl, fileName);
     }
+    import_sweetalert2.default.fire(
+      "\u0630\u062E\u06CC\u0631\u0647 \u0634\u062F",
+      `${ticketsToExport.length} \u0641\u0627\u06CC\u0644 \u0628\u0627 \u0645\u0648\u0641\u0642\u06CC\u062A \u0630\u062E\u06CC\u0631\u0647 \u0634\u062F.`,
+      "success"
+    );
   }
   document.getElementById("newTicketBtn").addEventListener("click", () => {
     editingId = null;

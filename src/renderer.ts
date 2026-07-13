@@ -22,6 +22,7 @@ let tickets: any[] = [];
 let editingId: number | null = null;
 let passengers: any[] = [];
 let currentPreviewTickets: any[] = [];
+let currentPreviewIsFull = true;   // remember which version was shown
 
 // ---------- Utility ----------
 function computeTotal(price: number, penalty: number): number {
@@ -158,6 +159,7 @@ async function showPreview(ticketsToPreview: any[]) {
     // If we reach here, either "نسخه کامل" was confirmed (isConfirmed = true)
     // or "نسخه مشتری" was clicked (isDismissed && dismiss == cancel)
     const isFull = result.isConfirmed;   // true = full version, false = customer version
+    currentPreviewIsFull = isFull;
 
     const modalBody = document.getElementById('previewContent')!;
     let html = '';
@@ -205,16 +207,30 @@ function buildPreviewHTML(ticket: any, isFull: boolean): string {
 }
 
 async function exportPreviewAsImage() {
-    const modalBody = document.getElementById('previewContent')!;
-    const canvas = await html2canvas(modalBody, { scale: 2 });
-    const dataUrl = canvas.toDataURL('image/png');
-    if (currentPreviewTickets.length) {
-        const t = currentPreviewTickets[0];
-        const year = t.flight_date.split('/')[0];
-        await api.saveImage(dataUrl, `${year}.${t.row_number}.png`);
-    } else {
-        await api.saveImage(dataUrl, 'ticket.png');
+    const ticketsToExport = currentPreviewTickets;
+    if (!ticketsToExport.length) return;
+
+    for (const ticket of ticketsToExport) {
+        // Build temporary container for a single ticket
+        const container = document.createElement('div');
+        container.style.cssText = 'position:absolute;left:-9999px;top:0;';
+        container.innerHTML = buildPreviewHTML(ticket, currentPreviewIsFull);
+        document.body.appendChild(container);
+
+        const canvas = await html2canvas(container, { scale: 2 });
+        document.body.removeChild(container);
+
+        const dataUrl = canvas.toDataURL('image/png');
+        const year = ticket.flight_date.split('/')[0];
+        const fileName = `${year}.${ticket.row_number}.png`;
+        await api.saveImage(dataUrl, fileName);
     }
+
+    Swal.fire(
+        'ذخیره شد',
+        `${ticketsToExport.length} فایل با موفقیت ذخیره شد.`,
+        'success'
+    );
 }
 
 // ---------- Form building ----------
