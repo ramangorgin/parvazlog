@@ -18,13 +18,15 @@ The app replaces error‑prone spreadsheets with a clean, Persian‑language UI,
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
 - [Installation & Usage](#installation--usage)
-- [Data Seeding from Excel](#data-seeding-from-excel)
+- [Data Seeding (Auto‑Import)](#data-seeding-auto‑import)
 - [User Interface](#user-interface)
+- [Sorting, Searching & Pagination](#sorting-searching--pagination)
 - [Form Behavior & Validation](#form-behavior--validation)
 - [Preview, Print & Export](#preview-print--export)
 - [Group Booking](#group-booking)
 - [Database Schema](#database-schema)
 - [Dictionary & Mappings](#dictionary--mappings)
+- [Auto‑Update](#auto‑update)
 - [Build & Packaging](#build--packaging)
 - [Future Roadmap](#future-roadmap)
 - [License](#license)
@@ -44,9 +46,12 @@ The app replaces error‑prone spreadsheets with a clean, Persian‑language UI,
 - **Jalali Date Picker** – Persian calendar input with Persian digits.
 - **Two Preview Modes** – *Full (agency)* and *Customer* version with proper field visibility.
 - **Print & PNG Export** – Print single or multiple tickets; export each ticket as a separate PNG.
-- **Historical Data Import** – One‑time seed script from an existing Excel file.
+- **Table Sorting & Pagination** – Toggle ascending/descending order, choose page size (10/50/100/All), and navigate pages.
+- **Live Search** – Filter records instantly by any field.
+- **Historical Data Auto‑Import** – The app automatically loads existing tickets from a bundled Excel file on first launch.
 - **Fully Offline** – No server, no internet, no external API.
 - **Professional Alerts** – Uses SweetAlert2 for delete confirmations and version selection.
+- **Automatic Update** – Checks GitHub releases and downloads new versions with a single click (optional manual check from the menu).
 
 ---
 
@@ -78,11 +83,13 @@ Ticket price = 1,000,000 Rial, penalty = 70% → Refundable = 300,000 Rial.
 | Language            | TypeScript 5.3                       |
 | Database            | SQLite via `better-sqlite3`          |
 | UI Framework        | Bootstrap 5 (RTL)                    |
+| Font                | Vazirmatn (variable weight)          |
 | Date Picker         | @majidh1/jalalidatepicker            |
 | Searchable Dropdowns| Select2 + jQuery                     |
 | Alerts              | SweetAlert2                          |
 | Image Export        | html2canvas                          |
 | Excel Parsing       | xlsx                                 |
+| Auto‑Update         | electron‑updater                     |
 | Bundler             | esbuild (for renderer)               |
 
 ---
@@ -93,15 +100,15 @@ The project follows a **modular file structure** with separation of concerns:
 
 ```
 parvazlog/
-├── assets/             # Logo and static assets
+├── assets/             # Logo and static assets (fonts, icons)
 ├── data/               # Excel file for seeding (1404.xlsx)
 ├── src/
-│   ├── main.ts         # Electron main process, window creation, IPC handlers
+│   ├── main.ts         # Electron main process, window creation, IPC handlers, auto‑seed, auto‑updater, menu
 │   ├── preload.ts      # Secure context bridge for IPC
 │   ├── database.ts     # SQLite connection, table creation
 │   ├── utils.ts        # Digit conversion, random generators
 │   ├── dictionary.ts   # Cities, airports, airlines mappings
-│   ├── seed.ts         # One‑time Excel import script
+│   ├── seed.ts         # Standalone Excel import script (for development)
 │   ├── renderer.ts     # All UI logic (bundled by esbuild)
 │   ├── index.html      # HTML shell
 │   └── style.css       # Custom styles
@@ -128,27 +135,32 @@ All database operations run in the **main process** via Electron’s `ipcMain` h
 
 ### Setup
 ```bash
-git clone https://github.com/yourusername/parvazlog.git
+git clone https://github.com/ramangorgin/parvazlog.git
 cd parvazlog
 npm install
-npm rebuild better-sqlite3   # ensure native module is compiled for Electron
-npm run seed                 # import historical Excel data (optional)
-npx electron-rebuild -f -w better-sqlite3
-npm start
+# The postinstall script automatically rebuilds native modules for Electron
+npm run dev       # rebuild for current platform + start
+```
+
+### Data Seeding (development only)
+```bash
+npm run seed      # manual Excel import (optional, the app auto‑seeds on first run)
 ```
 
 ### Development
 ```bash
-npm run build   # compile only
-npm start       # build + launch
+npm run build     # compile only
+npm start         # build + launch (may need npm rebuild better-sqlite3 if switching platforms)
 ```
 
 ---
 
-## Data Seeding from Excel
+## Data Seeding (Auto‑Import)
 
-A script (`src/seed.ts`) reads `data/1404.xlsx` and imports all rows into the SQLite database.  
-It handles:
+The application **automatically imports** the Excel file `data/1404.xlsx` on the **first launch** when the database is empty.  
+This happens transparently – no user action required. The file is bundled inside the app’s resources during packaging.
+
+For development, a standalone script (`src/seed.ts`) can also be run manually with `npm run seed`. It performs the same cleaning steps:
 - Leading/trailing dots and extra whitespace removal
 - Splitting full Persian names into first/last name
 - Parsing combined airline + flight number column using dictionary matching
@@ -156,15 +168,14 @@ It handles:
 - Computing missing penalty and total price fields
 - Generating random watcher and reference for each record
 
-The seed script automatically clears existing records before importing to avoid duplicates.
-
 ---
 
 ## User Interface
 
-- **Right‑to‑left** Persian layout.
+- **Right‑to‑left** Persian layout with Vazirmatn font.
 - Header with logo and Persian title “پروازلاگ”.
 - Main table with selectable rows, edit/delete/preview buttons.
+- **Search bar, sort toggle, page size selector, and pagination controls** all in one row above the table.
 - “ثبت بلیط جدید” button opens an inline form (not a modal).
 - Form layout: **2 fields per row** on desktop, **1 per row** on mobile.
 - Searchable dropdowns (Select2) for origin city, destination city, airline.
@@ -173,6 +184,19 @@ The seed script automatically clears existing records before importing to avoid 
 - Ticket price field automatically inserts commas every 3 digits.
 - Watcher and reference have auto‑generate buttons (circular arrow SVG icon).
 - Passenger cards have beautiful styling with hover effects and clear margins.
+- Application menu includes **File**, **View** (zoom, devtools), and **Help** (check for updates).
+
+---
+
+## Sorting, Searching & Pagination
+
+The table supports:
+- **Sort**: toggle between ascending (۱→۳۹۹) and descending (۳۹۹→۱) order.
+- **Live search**: type in any part of the row (name, city, date, flight number) – the table filters instantly.
+- **Page size**: choose ۱۰, ۵۰, ۱۰۰, or “همه” (all).
+- **Pagination buttons**: previous/next page with current page indicator.
+
+All controls are in a single responsive row and work together seamlessly.
 
 ---
 
@@ -249,6 +273,23 @@ Helper functions map Persian names to English for preview output. All cities app
 
 ---
 
+## Auto‑Update
+
+The app uses `electron‑updater` with a **public GitHub repository** as the update source.  
+- On startup, the app silently checks for a new version.  
+- If a newer version is found, a SweetAlert2 dialog offers to download it.  
+- The user can also manually trigger the check from **Help → Check for Update**.  
+- After downloading, the app prompts to restart and install the new version.  
+- **The local database (`parvazlog.db`) is never touched during updates** – it lives in `%APPDATA%\parvazlog`.
+
+To publish a new release:
+1. Bump the version in `package.json`.
+2. Commit and push.
+3. Run `export GH_TOKEN="your_token" && npm run dist`.
+4. Go to the GitHub Releases page and publish the draft.
+
+---
+
 ## Build & Packaging
 
 ### Development Build
@@ -258,13 +299,17 @@ npm start
 ```
 
 ### Packaging for Windows
+The Windows target is a **portable executable** (single .exe file) – no installation required.  
 ```bash
-npm install --save-dev electron-builder
-# Add build config to package.json:
-# "build": { "appId": "com.parvazlog.app", "directories": { "output": "dist-pack" }, "win": { "target": "nsis" } }
-npx electron-builder --win
+npm run pack
 ```
-The `.exe` installer will be created in `dist-pack/`.
+The output will be `release/Parvazlog-1.0.0.exe`.
+
+To create a new release on GitHub (auto‑update compatible):
+```bash
+export GH_TOKEN="your_github_token"
+npm run dist
+```
 
 ---
 
