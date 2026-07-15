@@ -12,7 +12,7 @@ export function toPersianDigits(str: string): string {
 export function generateReference(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let ref = '';
-    for (let i = 0; i < 6; i++) ref += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (let i = 0; i < 8; i++) ref += chars.charAt(Math.floor(Math.random() * chars.length));
     return ref;
 }
 

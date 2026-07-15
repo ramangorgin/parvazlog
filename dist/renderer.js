@@ -3314,7 +3314,7 @@
   function generateReference() {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let ref = "";
-    for (let i = 0; i < 6; i++) ref += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (let i = 0; i < 8; i++) ref += chars.charAt(Math.floor(Math.random() * chars.length));
     return ref;
   }
   function generateWatcher() {
@@ -3552,37 +3552,53 @@
     const destCityEn = getCityEnglish(ticket.destination_city);
     const airlineEn = getAirlineEnglish(ticket.airline);
     return `
-    <div class="ticket-ugly">
-    <div class="title">Flight Ticket</div>
-    <div class="row">
-    <span>Voucher:${ticket.reference}</span>
-    <span>Reference:${ticket.watcher}</span>
+    <div class="ticket-ugly container border border-2 border-dark rounded p-4 bg-white text-dark" style="max-width: 600px; font-family: monospace, sans-serif; font-size: 1.1rem;">
+    <h2 class="text-center mb-4 fw-bold" style="letter-spacing: 2px;">Flight Ticket</h2>
+
+    <div class="row mb-3">
+    <div class="col-6">Voucher:${ticket.watcher}</div>
+    <div class="col-6">Reference:${ticket.reference}</div>
     </div>
-    <div class="row">
-    <span>Flight Date: ${ticket.flight_date}</span>
-    <span>Flight Time: ${ticket.flight_time}</span>
+
+    <div class="row mb-3">
+    <div class="col-6">Flight Date: ${ticket.flight_date}</div>
+    <div class="col-6">Flight Time: ${ticket.flight_time}</div>
     </div>
-    <div class="row">
-    <span>Flight No:${ticket.flight_number}</span>
-    <span>Airline:${airlineEn}</span>
+
+    <div class="row mb-3">
+    <div class="col-6">Flight No.:${ticket.flight_number}</div>
+    <div class="col-6">Airline:${airlineEn}</div>
     </div>
-    <div class="row">
-    <span>From: ${originCityEn}</span>
-    <span>To: ${destCityEn}</span>
+
+    <div class="row mb-4">
+    <div class="col-6">From: ${originCityEn}</div>
+    <div class="col-6">To: ${destCityEn}</div>
     </div>
-    <div class="center">
-    <strong>Allowed Baggage: ${ticket.max_baggage} kg</strong>
+
+    <div class="text-center mb-3">
+    Allowed Baggage:${ticket.max_baggage} kg
     </div>
-    <div class="center">
-    <strong>Passenger List</strong><br>
-    ${passengerNameEn} (Adult)
+
+    <div class="text-center mb-4">
+    Passenger List:<br>
+    <span class="fs-5">${passengerNameEn}</span>
     </div>
-    <div class="center">
-    <div class="seal">Seal and Signature</div>
-    <div><strong>Amount: ${ticket.ticket_price.toLocaleString()} Rial</strong></div>
+
+    <div class="row mb-4">
+    <div>
+    Amount:<br>
+    ${ticket.ticket_price.toLocaleString()}
     </div>
-    <div class="notice">
+    </div>
+
+    <div class="text-start small mb-4" style="font-size: 0.85rem; direction: ltr !important; text-align: left !important;">
     Passenger presence at the airport is mandatory at least 2 hours for domestic and 3 hours for international flights.
+    </div>
+
+    <div class="row mt-5">
+    <div class="col-12 text-start">
+    <span class="border-top border-dark border-2 pt-2 d-inline-block">Seal and signature</span>
+    </div>
     </div>
     </div>`;
   }
@@ -3738,12 +3754,12 @@
     </div></div>
     <div class="col-md-3"><label class="form-label">\u062D\u062F\u0627\u06A9\u062B\u0631 \u0628\u0627\u0631 (kg)</label>
     <input type="text" id="maxBaggage" class="form-control numeric" value="${existingTicket ? toPersianDigits(String(existingTicket.max_baggage)) : "\u06F2\u06F0"}" required></div>
-    <div class="col-md-3"><label class="form-label">\u0646\u0627\u0638\u0631 (\u06F8 \u0631\u0642\u0645\u06CC)</label>
+    <div class="col-md-3"><label class="form-label">Voucher (\u06F8 \u0631\u0642\u0645\u06CC)</label>
     <div class="input-group">
     <input type="text" id="watcher" class="form-control numeric" value="${existingTicket ? toPersianDigits(existingTicket.watcher) : ""}" required>
     <button type="button" class="btn btn-outline-secondary auto-watcher" title="\u062A\u0648\u0644\u06CC\u062F \u062A\u0635\u0627\u062F\u0641\u06CC">${refreshSVG}</button>
     </div></div>
-    <div class="col-md-3"><label class="form-label">\u0645\u0631\u062C\u0639 (\u06F6 \u06A9\u0627\u0631\u0627\u06A9\u062A\u0631)</label>
+    <div class="col-md-3"><label class="form-label">Reference (\u06F8 \u06A9\u0627\u0631\u0627\u06A9\u062A\u0631)</label>
     <div class="input-group">
     <input type="text" id="reference" class="form-control" value="${existingTicket?.reference || ""}" required>
     <button type="button" class="btn btn-outline-secondary auto-ref" title="\u062A\u0648\u0644\u06CC\u062F \u062A\u0635\u0627\u062F\u0641\u06CC">${refreshSVG}</button>

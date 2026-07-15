@@ -55,30 +55,25 @@ async function loadTickets() {
 }
 
 function renderTable() {
-    // 1. Filter by search term
     const filter = searchTerm.toLowerCase().trim();
     const filtered = filter === '' ? tickets : tickets.filter(t => {
         const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_time} ${t.ticket_price}`.toLowerCase();
         return text.includes(filter);
     });
 
-    // 2. Sort
     const sorted = [...filtered].sort((a, b) => {
         const diff = a.row_number - b.row_number;
         return sortDirection === 'asc' ? diff : -diff;
     });
 
-    // 3. Paginate
     const totalPages = pageSize === 0 ? 1 : Math.ceil(sorted.length / pageSize);
     const start = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
     const paginated = pageSize === 0 ? sorted : sorted.slice(start, start + pageSize);
 
-    // 4. Update pagination controls
     document.getElementById('pageInfo')!.textContent = `صفحه ${currentPage} از ${totalPages}`;
     (document.getElementById('prevPageBtn') as HTMLButtonElement).disabled = currentPage <= 1;
     (document.getElementById('nextPageBtn') as HTMLButtonElement).disabled = currentPage >= totalPages;
 
-    // 5. Build table body (combined name column)
     const tbody = document.getElementById('ticketsTableBody')!;
     tbody.innerHTML = '';
     paginated.forEach((t: any) => {
@@ -100,12 +95,10 @@ function renderTable() {
         tbody.appendChild(tr);
     });
 
-    // 6. Re-bind events and update multi-select
     bindTableEvents();
     updateMultiButtons();
 }
 
-// ---------- Table events ----------
 function bindTableEvents() {
     document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', async (e) => {
         const id = parseInt((e.currentTarget as HTMLElement).dataset.id!);
@@ -179,14 +172,14 @@ function showPreview(ticketsToPreview: any[]) {
         html += buildPreviewHTML(t);
         if (idx < ticketsToPreview.length - 1) html += '<div style="page-break-after: always;"></div>';
     });
-        modalBody.innerHTML = html;
+    modalBody.innerHTML = html;
 
-        const modalEl = document.getElementById('previewModal')!;
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
+    const modalEl = document.getElementById('previewModal')!;
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
 
-        (document.getElementById('printPreviewBtn')!).onclick = () => window.print();
-        (document.getElementById('exportPreviewBtn')!).onclick = () => exportPreviewAsImage();
+    (document.getElementById('printPreviewBtn')!).onclick = () => window.print();
+    (document.getElementById('exportPreviewBtn')!).onclick = () => exportPreviewAsImage();
 }
 
 function buildPreviewHTML(ticket: any): string {
@@ -199,40 +192,57 @@ function buildPreviewHTML(ticket: any): string {
     const airlineEn = getAirlineEnglish(ticket.airline);
 
     return `
-    <div class="ticket-ugly">
-    <div class="title">Flight Ticket</div>
-    <div class="row">
-    <span>Voucher:${ticket.reference}</span>
-    <span>Reference:${ticket.watcher}</span>
+    <div class="ticket-ugly container border border-2 border-dark rounded p-4 bg-white text-dark" style="max-width: 600px; font-family: monospace, sans-serif; font-size: 1.1rem;">
+    <h2 class="text-center mb-4 fw-bold" style="letter-spacing: 2px;">Flight Ticket</h2>
+
+    <div class="row mb-3">
+    <div class="col-6">Voucher:${ticket.watcher}</div>
+    <div class="col-6">Reference:${ticket.reference}</div>
     </div>
-    <div class="row">
-    <span>Flight Date: ${ticket.flight_date}</span>
-    <span>Flight Time: ${ticket.flight_time}</span>
+
+    <div class="row mb-3">
+    <div class="col-6">Flight Date: ${ticket.flight_date}</div>
+    <div class="col-6">Flight Time: ${ticket.flight_time}</div>
     </div>
-    <div class="row">
-    <span>Flight No:${ticket.flight_number}</span>
-    <span>Airline:${airlineEn}</span>
+
+    <div class="row mb-3">
+    <div class="col-6">Flight No.:${ticket.flight_number}</div>
+    <div class="col-6">Airline:${airlineEn}</div>
     </div>
-    <div class="row">
-    <span>From: ${originCityEn}</span>
-    <span>To: ${destCityEn}</span>
+
+    <div class="row mb-4">
+    <div class="col-6">From: ${originCityEn}</div>
+    <div class="col-6">To: ${destCityEn}</div>
     </div>
-    <div class="center">
-    <strong>Allowed Baggage: ${ticket.max_baggage} kg</strong>
+
+    <div class="text-center mb-3">
+    Allowed Baggage:${ticket.max_baggage} kg
     </div>
-    <div class="center">
-    <strong>Passenger List</strong><br>
-    ${passengerNameEn} (Adult)
+
+    <div class="text-center mb-4">
+    Passenger List:<br>
+    <span class="fs-5">${passengerNameEn}</span>
     </div>
-    <div class="center">
-    <div class="seal">Seal and Signature</div>
-    <div><strong>Amount: ${ticket.ticket_price.toLocaleString()} Rial</strong></div>
+
+    <div class="row mb-4">
+    <div>
+    Amount:<br>
+    ${ticket.ticket_price.toLocaleString()}
     </div>
-    <div class="notice">
+    </div>
+
+    <div class="text-start small mb-4" style="font-size: 0.85rem; direction: ltr !important; text-align: left !important;">
     Passenger presence at the airport is mandatory at least 2 hours for domestic and 3 hours for international flights.
+    </div>
+
+    <div class="row mt-5">
+    <div class="col-12 text-start">
+    <span class="border-top border-dark border-2 pt-2 d-inline-block">Seal and signature</span>
+    </div>
     </div>
     </div>`;
 }
+
 
 async function exportPreviewAsImage() {
     const ticketsToExport = currentPreviewTickets;
@@ -318,7 +328,7 @@ document.getElementById('newTicketBtn')!.addEventListener('click', () => {
     buildForm();
 });
 
-// ----- Import / Export / Clear buttons (direct calls) -----
+// ----- Import / Export / Clear buttons -----
 document.getElementById('importExcelBtn')!.addEventListener('click', async () => {
     const result = await api.importExcel();
     if (result.success) {
@@ -330,7 +340,7 @@ document.getElementById('importExcelBtn')!.addEventListener('click', async () =>
 });
 
 document.getElementById('exportExcelBtn')!.addEventListener('click', async () => {
-    await api.exportExcel(); // save dialog handles feedback
+    await api.exportExcel();
 });
 
 document.getElementById('clearAllBtn')!.addEventListener('click', async () => {
@@ -349,7 +359,7 @@ document.getElementById('clearAllBtn')!.addEventListener('click', async () => {
     }
 });
 
-// ---------- Form building (unchanged) ----------
+// ---------- Form building ----------
 function buildForm(existingTicket?: any) {
     const container = document.getElementById('formContainer')!;
     container.classList.add('visible');
@@ -404,12 +414,12 @@ function buildForm(existingTicket?: any) {
     </div></div>
     <div class="col-md-3"><label class="form-label">حداکثر بار (kg)</label>
     <input type="text" id="maxBaggage" class="form-control numeric" value="${existingTicket ? toPersianDigits(String(existingTicket.max_baggage)) : '۲۰'}" required></div>
-    <div class="col-md-3"><label class="form-label">ناظر (۸ رقمی)</label>
+    <div class="col-md-3"><label class="form-label">Voucher (۸ رقمی)</label>
     <div class="input-group">
     <input type="text" id="watcher" class="form-control numeric" value="${existingTicket ? toPersianDigits(existingTicket.watcher) : ''}" required>
     <button type="button" class="btn btn-outline-secondary auto-watcher" title="تولید تصادفی">${refreshSVG}</button>
     </div></div>
-    <div class="col-md-3"><label class="form-label">مرجع (۶ کاراکتر)</label>
+    <div class="col-md-3"><label class="form-label">Reference (۸ کاراکتر)</label>
     <div class="input-group">
     <input type="text" id="reference" class="form-control" value="${existingTicket?.reference||''}" required>
     <button type="button" class="btn btn-outline-secondary auto-ref" title="تولید تصادفی">${refreshSVG}</button>
@@ -442,7 +452,7 @@ function buildForm(existingTicket?: any) {
 
     jalaliDatepicker.startWatch({
         input: document.getElementById('flightDate')!,
-                                persianDigits: true
+        persianDigits: true
     });
 
     const populateAirports = (citySelectId: string, airportSelectId: string, existingValue?: string) => {
@@ -474,7 +484,7 @@ function buildForm(existingTicket?: any) {
     attachFormEvents(existingTicket);
 }
 
-// ---------- Passenger management (unchanged) ----------
+// ---------- Passenger management ----------
 function renderPassengerInputs() {
     const listDiv = document.getElementById('passengerList')!;
     listDiv.innerHTML = passengers.map((p, idx) => `
@@ -507,7 +517,7 @@ function renderPassengerInputs() {
     };
 }
 
-// ---------- Form events (unchanged) ----------
+// ---------- Form events ----------
 function attachFormEvents(existingTicket?: any) {
     const form = document.getElementById('ticketForm')!;
     document.getElementById('cancelFormBtn')!.onclick = () => {
