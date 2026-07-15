@@ -7,7 +7,6 @@
     "postinstall": "electron-builder install-app-deps",
     "build": "tsc && cp src/index.html src/style.css dist/ && cp -r node_modules/@majidh1/jalalidatepicker/dist dist/lib && cp -r node_modules/select2/dist dist/select2 && cp node_modules/jquery/dist/jquery.min.js dist/jquery.min.js && cp -r assets dist/assets && npx esbuild src/renderer.ts --bundle --outfile=dist/renderer.js --target=es2020 --platform=browser",
     "start": "npm run build && electron .",
-    "seed": "npx ts-node src/seed.ts",
     "pack": "npm run build && electron-builder --win",
     "dist": "npm run build && electron-builder --win --publish always",
     "dev": "npx electron-rebuild -f -w better-sqlite3 && npm start"
@@ -48,7 +47,8 @@
       "artifactName": "Parvazlog-${version}.exe"
     },
     "extraResources": [
-      { "from": "data", "to": "data", "filter": ["**/*"] }
+      { "from": "data", "to": "data", "filter": ["**/*"] },
+      { "from": "assets/app-update.yml", "to": "app-update.yml" }
     ],
     "publish": {
       "provider": "github",

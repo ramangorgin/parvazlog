@@ -152,3 +152,42 @@ margin-bottom: 0.5rem !important;
 #sortBtn svg {
 margin-left: 4px;
 }
+
+
+
+.ticket-ugly {
+    background: #f8f8f8;
+    border: 1px solid #ccc;
+    padding: 10px;
+    font-family: 'Courier New', monospace;  /* to make it ugly */
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
+}
+.ticket-ugly .title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+.ticket-ugly .row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+.ticket-ugly .sticky {
+    display: flex;
+    gap: 10px;
+}
+.ticket-ugly .sticky span {
+    white-space: nowrap;
+}
+.ticket-ugly .center {
+    text-align: center;
+}
+.ticket-ugly .seal {
+    border: 2px dashed #999;
+    display: inline-block;
+    padding: 20px;
+    margin: 10px auto;
+    font-style: italic;
+}

@@ -22,11 +22,10 @@ let tickets: any[] = [];
 let editingId: number | null = null;
 let passengers: any[] = [];
 let currentPreviewTickets: any[] = [];
-let currentPreviewIsFull = true;
 let searchTerm = '';
 let sortDirection: 'asc' | 'desc' = 'asc';
 let currentPage = 1;
-let pageSize = 10; // default 10
+let pageSize = 10;
 
 // ---------- Utility ----------
 function computeTotal(price: number, penalty: number): number {
@@ -59,7 +58,7 @@ function renderTable() {
     // 1. Filter by search term
     const filter = searchTerm.toLowerCase().trim();
     const filtered = filter === '' ? tickets : tickets.filter(t => {
-        const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_number}`.toLowerCase();
+        const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_time} ${t.ticket_price}`.toLowerCase();
         return text.includes(filter);
     });
 
@@ -79,7 +78,7 @@ function renderTable() {
     (document.getElementById('prevPageBtn') as HTMLButtonElement).disabled = currentPage <= 1;
     (document.getElementById('nextPageBtn') as HTMLButtonElement).disabled = currentPage >= totalPages;
 
-    // 5. Build table body
+    // 5. Build table body (combined name column)
     const tbody = document.getElementById('ticketsTableBody')!;
     tbody.innerHTML = '';
     paginated.forEach((t: any) => {
@@ -91,7 +90,8 @@ function renderTable() {
         <td>${t.origin_city}</td>
         <td>${t.destination_city}</td>
         <td>${toPersianDigits(t.flight_date)}</td>
-        <td>${t.flight_number}</td>
+        <td>${t.flight_time}</td>
+        <td>${formatPrice(String(t.ticket_price))}</td>
         <td>
         <button class="btn btn-sm btn-warning edit-btn" data-id="${t.id}">ویرایش</button>
         <button class="btn btn-sm btn-danger delete-btn" data-id="${t.id}">حذف</button>
@@ -105,7 +105,7 @@ function renderTable() {
     updateMultiButtons();
 }
 
-// ---------- Table events (edit, delete, preview) ----------
+// ---------- Table events ----------
 function bindTableEvents() {
     document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', async (e) => {
         const id = parseInt((e.currentTarget as HTMLElement).dataset.id!);
@@ -171,31 +171,12 @@ async function editTicket(id: number) {
 }
 
 // ---------- Preview / Print / Export ----------
-async function showPreview(ticketsToPreview: any[]) {
+function showPreview(ticketsToPreview: any[]) {
     currentPreviewTickets = ticketsToPreview;
-
-    const result = await Swal.fire({
-        title: 'انتخاب نوع پیش‌نمایش',
-        html: 'چه نسخه‌ای را می‌خواهید مشاهده کنید؟',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'نسخه کامل (آژانس)',
-                                   cancelButtonText: 'نسخه مشتری',
-                                   confirmButtonColor: '#3085d6',
-                                   cancelButtonColor: '#f0ad4e',
-                                   reverseButtons: true,
-                                   focusCancel: true,
-    });
-
-    if (result.isDismissed && result.dismiss !== Swal.DismissReason.cancel) return;
-
-    const isFull = result.isConfirmed;
-    currentPreviewIsFull = isFull;
-
     const modalBody = document.getElementById('previewContent')!;
     let html = '';
     ticketsToPreview.forEach((t, idx) => {
-        html += buildPreviewHTML(t, isFull);
+        html += buildPreviewHTML(t);
         if (idx < ticketsToPreview.length - 1) html += '<div style="page-break-after: always;"></div>';
     });
         modalBody.innerHTML = html;
@@ -208,31 +189,49 @@ async function showPreview(ticketsToPreview: any[]) {
         (document.getElementById('exportPreviewBtn')!).onclick = () => exportPreviewAsImage();
 }
 
-function buildPreviewHTML(ticket: any, isFull: boolean): string {
+function buildPreviewHTML(ticket: any): string {
+    const passengerNameEn = (ticket.first_name_english && ticket.last_name_english)
+    ? `${ticket.first_name_english} ${ticket.last_name_english}`
+    : `${ticket.first_name_persian} ${ticket.last_name_persian}`;
+
     const originCityEn = getCityEnglish(ticket.origin_city);
     const destCityEn = getCityEnglish(ticket.destination_city);
-    const originAirportEn = getAirportEnglish(ticket.origin_airport);
-    const destAirportEn = getAirportEnglish(ticket.destination_airport);
     const airlineEn = getAirlineEnglish(ticket.airline);
 
     return `
-    <div class="ticket-preview">
-    <h5>Ticket #${ticket.row_number}</h5>
-    <p><strong>Passenger:</strong> ${ticket.first_name_english} ${ticket.last_name_english} (Adult)</p>
-    <p><strong>Route:</strong> ${originCityEn} (${originAirportEn}) → ${destCityEn} (${destAirportEn})</p>
-    <p><strong>Date:</strong> ${ticket.flight_date} &nbsp; <strong>Time:</strong> ${ticket.flight_time}</p>
-    <p><strong>Airline:</strong> ${airlineEn} &nbsp; <strong>Flight:</strong> ${ticket.flight_number}</p>
-    <p><strong>Baggage Allowance:</strong> ${ticket.max_baggage} kg</p>
-    <p><strong>Ticket Price:</strong> ${ticket.ticket_price.toLocaleString()} Rial</p>
-    ${isFull ? `
-        <p><strong>Reference:</strong> ${ticket.reference}</p>
-        <p><strong>Watcher:</strong> ${ticket.watcher}</p>
-        <p><strong>Penalty:</strong> ${ticket.penalty_percent}%</p>
-        <p><strong>Refundable Amount:</strong> ${ticket.total_price.toLocaleString()} Rial</p>
-        ` : ''}
-        <div class="stamp-area">Stamp / Seal</div>
-        ${!isFull ? `<p class="required-note">Passenger presence at the airport is mandatory at least 2 hours for domestic and 3 hours for international flights.</p>` : ''}
-        </div>`;
+    <div class="ticket-ugly">
+    <div class="title">Flight Ticket</div>
+    <div class="row">
+    <span>Voucher:${ticket.reference}</span>
+    <span>Reference:${ticket.watcher}</span>
+    </div>
+    <div class="row">
+    <span>Flight Date: ${ticket.flight_date}</span>
+    <span>Flight Time: ${ticket.flight_time}</span>
+    </div>
+    <div class="row">
+    <span>Flight No:${ticket.flight_number}</span>
+    <span>Airline:${airlineEn}</span>
+    </div>
+    <div class="row">
+    <span>From: ${originCityEn}</span>
+    <span>To: ${destCityEn}</span>
+    </div>
+    <div class="center">
+    <strong>Allowed Baggage: ${ticket.max_baggage} kg</strong>
+    </div>
+    <div class="center">
+    <strong>Passenger List</strong><br>
+    ${passengerNameEn} (Adult)
+    </div>
+    <div class="center">
+    <div class="seal">Seal and Signature</div>
+    <div><strong>Amount: ${ticket.ticket_price.toLocaleString()} Rial</strong></div>
+    </div>
+    <div class="notice">
+    Passenger presence at the airport is mandatory at least 2 hours for domestic and 3 hours for international flights.
+    </div>
+    </div>`;
 }
 
 async function exportPreviewAsImage() {
@@ -243,7 +242,7 @@ async function exportPreviewAsImage() {
     for (const ticket of ticketsToExport) {
         const container = document.createElement('div');
         container.style.cssText = 'position:absolute;left:-9999px;top:0;';
-        container.innerHTML = buildPreviewHTML(ticket, currentPreviewIsFull);
+        container.innerHTML = buildPreviewHTML(ticket);
         document.body.appendChild(container);
 
         const canvas = await html2canvas(container, { scale: 2 });
@@ -298,7 +297,7 @@ document.getElementById('nextPageBtn')!.addEventListener('click', () => {
         tickets.filter(t => {
             const filter = searchTerm.toLowerCase().trim();
             if (filter === '') return true;
-            const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_number}`.toLowerCase();
+            const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_time} ${t.ticket_price}`.toLowerCase();
             return text.includes(filter);
         }).length / pageSize
     );
@@ -308,7 +307,7 @@ document.getElementById('nextPageBtn')!.addEventListener('click', () => {
 // ---------- Search ----------
 document.getElementById('searchInput')!.addEventListener('input', (e) => {
     searchTerm = (e.target as HTMLInputElement).value;
-    currentPage = 1;   // reset to first page on new search
+    currentPage = 1;
     renderTable();
 });
 
@@ -317,6 +316,37 @@ document.getElementById('newTicketBtn')!.addEventListener('click', () => {
     editingId = null;
     passengers = [{ firstNameFa: '', lastNameFa: '', firstNameEn: '', lastNameEn: '' }];
     buildForm();
+});
+
+// ----- Import / Export / Clear buttons (direct calls) -----
+document.getElementById('importExcelBtn')!.addEventListener('click', async () => {
+    const result = await api.importExcel();
+    if (result.success) {
+        Swal.fire('موفق', `${result.count} رکورد اضافه شد.`, 'success');
+        loadTickets();
+    } else {
+        Swal.fire('خطا', result.message || 'خطا در بارگذاری فایل', 'error');
+    }
+});
+
+document.getElementById('exportExcelBtn')!.addEventListener('click', async () => {
+    await api.exportExcel(); // save dialog handles feedback
+});
+
+document.getElementById('clearAllBtn')!.addEventListener('click', async () => {
+    const confirm = await Swal.fire({
+        title: 'حذف همه رکوردها',
+        text: 'آیا مطمئن هستید؟ این عملیات غیرقابل بازگشت است.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'بله، همه را حذف کن',
+        cancelButtonText: 'لغو',
+    });
+    if (confirm.isConfirmed) {
+        await api.clearAllTickets();
+        loadTickets();
+        Swal.fire('حذف شد', 'همه رکوردها پاک شدند.', 'success');
+    }
 });
 
 // ---------- Form building (unchanged) ----------
@@ -341,97 +371,62 @@ function buildForm(existingTicket?: any) {
     let html = `
     <h4 class="mb-4 text-center" style="color: #2c3e50;">${existingTicket ? 'ویرایش بلیط' : 'ثبت بلیط جدید'}</h4>
     <form id="ticketForm" class="row g-3">
-    <div class="col-md-6">
-    <label class="form-label">شهر مبدا</label>
+    <div class="col-md-6"><label class="form-label">شهر مبدا</label>
     <select id="originCity" class="form-select searchable" required>
     <option value="">انتخاب کنید</option>
     ${[...new Set(cityAirports.map(c => c.persianCity))].map(city => `<option value="${city}" ${existingTicket?.origin_city===city?'selected':''}>${city}</option>`).join('')}
-    </select>
-    </div>
-    <div class="col-md-6">
-    <label class="form-label">شهر مقصد</label>
+    </select></div>
+    <div class="col-md-6"><label class="form-label">شهر مقصد</label>
     <select id="destCity" class="form-select searchable" required>
     <option value="">انتخاب کنید</option>
     ${[...new Set(cityAirports.map(c => c.persianCity))].map(city => `<option value="${city}" ${existingTicket?.destination_city===city?'selected':''}>${city}</option>`).join('')}
-    </select>
-    </div>
-    <div class="col-md-6">
-    <label class="form-label">فرودگاه مبدا</label>
-    <select id="originAirport" class="form-select searchable" required></select>
-    </div>
-    <div class="col-md-6">
-    <label class="form-label">فرودگاه مقصد</label>
-    <select id="destAirport" class="form-select searchable" required></select>
-    </div>
-    <div class="col-md-6">
-    <label class="form-label">تاریخ (جلالی)</label>
-    <input type="text" id="flightDate" class="form-control" data-jdp value="${existingTicket?.flight_date||''}" required>
-    </div>
-    <div class="col-md-3">
-    <label class="form-label">ساعت پرواز</label>
+    </select></div>
+    <div class="col-md-6"><label class="form-label">فرودگاه مبدا</label><select id="originAirport" class="form-select searchable" required></select></div>
+    <div class="col-md-6"><label class="form-label">فرودگاه مقصد</label><select id="destAirport" class="form-select searchable" required></select></div>
+    <div class="col-md-6"><label class="form-label">تاریخ (جلالی)</label><input type="text" id="flightDate" class="form-control" data-jdp value="${existingTicket?.flight_date||''}" required></div>
+    <div class="col-md-3"><label class="form-label">ساعت پرواز</label>
     <select id="flightHour" class="form-select" required>
     ${hours.map(h => `<option value="${h.english}" ${existingTicket?.flight_time?.startsWith(h.english+':')?'selected':''}>${h.persian}</option>`).join('')}
-    </select>
-    </div>
-    <div class="col-md-3">
-    <label class="form-label">دقیقه</label>
+    </select></div>
+    <div class="col-md-3"><label class="form-label">دقیقه</label>
     <select id="flightMinute" class="form-select" required>
     ${minutes.map(m => `<option value="${m.english}" ${existingTicket?.flight_time?.endsWith(':'+m.english)?'selected':''}>${m.persian}</option>`).join('')}
-    </select>
-    </div>
-    <div class="col-md-6">
-    <label class="form-label">ایرلاین</label>
+    </select></div>
+    <div class="col-md-6"><label class="form-label">ایرلاین</label>
     <select id="airline" class="form-select searchable" required>
     <option value="">انتخاب کنید</option>
     ${airlines.map(a => `<option value="${a.persianName}" ${existingTicket?.airline===a.persianName?'selected':''}>${a.persianName}</option>`).join('')}
-    </select>
-    </div>
-    <div class="col-md-3">
-    <label class="form-label">شماره پرواز</label>
+    </select></div>
+    <div class="col-md-3"><label class="form-label">شماره پرواز</label>
     <div class="input-group">
     <input type="text" id="flightNumber" class="form-control" value="${existingTicket?.flight_number||''}" required>
     <button type="button" class="btn btn-outline-secondary auto-flight" title="تولید تصادفی">${refreshSVG}</button>
-    </div>
-    </div>
-    <div class="col-md-3">
-    <label class="form-label">حداکثر بار (kg)</label>
-    <input type="text" id="maxBaggage" class="form-control numeric" value="${existingTicket ? toPersianDigits(String(existingTicket.max_baggage)) : '۲۰'}" required>
-    </div>
-    <div class="col-md-3">
-    <label class="form-label">ناظر (۸ رقمی)</label>
+    </div></div>
+    <div class="col-md-3"><label class="form-label">حداکثر بار (kg)</label>
+    <input type="text" id="maxBaggage" class="form-control numeric" value="${existingTicket ? toPersianDigits(String(existingTicket.max_baggage)) : '۲۰'}" required></div>
+    <div class="col-md-3"><label class="form-label">ناظر (۸ رقمی)</label>
     <div class="input-group">
     <input type="text" id="watcher" class="form-control numeric" value="${existingTicket ? toPersianDigits(existingTicket.watcher) : ''}" required>
     <button type="button" class="btn btn-outline-secondary auto-watcher" title="تولید تصادفی">${refreshSVG}</button>
-    </div>
-    </div>
-    <div class="col-md-3">
-    <label class="form-label">مرجع (۶ کاراکتر)</label>
+    </div></div>
+    <div class="col-md-3"><label class="form-label">مرجع (۶ کاراکتر)</label>
     <div class="input-group">
     <input type="text" id="reference" class="form-control" value="${existingTicket?.reference||''}" required>
     <button type="button" class="btn btn-outline-secondary auto-ref" title="تولید تصادفی">${refreshSVG}</button>
-    </div>
-    </div>
-    <div class="col-md-6">
-    <label class="form-label">قیمت بلیط (ریال)</label>
-    <input type="text" id="ticketPrice" class="form-control numeric price-input" value="${existingTicket ? formatPrice(String(existingTicket.ticket_price)) : ''}" required>
-    </div>
+    </div></div>
+    <div class="col-md-6"><label class="form-label">قیمت بلیط (ریال)</label>
+    <input type="text" id="ticketPrice" class="form-control numeric price-input" value="${existingTicket ? formatPrice(String(existingTicket.ticket_price)) : ''}" required></div>
     <div class="col-12"></div>
-    <div class="col-md-6">
-    <label class="form-label">درصد جریمه</label>
-    <input type="text" id="penaltyPercent" class="form-control numeric" value="${existingTicket ? toPersianDigits(String(existingTicket.penalty_percent)) : '۰'}" required>
-    </div>
-    <div class="col-md-6">
-    <label class="form-label">قیمت کل</label>
-    <input type="text" id="totalPrice" class="form-control" readonly>
-    </div>
-    <div class="col-12 mt-4">
-    <h5 class="mb-3" style="color: #2c3e50;">مسافران</h5>
+    <div class="col-md-6"><label class="form-label">درصد جریمه</label>
+    <input type="text" id="penaltyPercent" class="form-control numeric" value="${existingTicket ? toPersianDigits(String(existingTicket.penalty_percent)) : '۰'}" required></div>
+    <div class="col-md-6"><label class="form-label">قیمت کل</label>
+    <input type="text" id="totalPrice" class="form-control" readonly></div>
+    <div class="col-12 mt-4"><h5 class="mb-3" style="color: #2c3e50;">مسافران</h5>
     <div id="passengerList"></div>
     <button type="button" id="addPassengerBtn" class="btn btn-outline-primary btn-sm mt-2">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
     افزودن مسافر
-    </button>
-    </div>
+    </button></div>
     <div class="col-12 d-flex justify-content-end gap-3 mt-4">
     <button type="button" id="cancelFormBtn" class="btn btn-outline-secondary btn-lg px-5">انصراف</button>
     <button type="submit" class="btn btn-success btn-lg px-5">ذخیره</button>
@@ -484,22 +479,10 @@ function renderPassengerInputs() {
     const listDiv = document.getElementById('passengerList')!;
     listDiv.innerHTML = passengers.map((p, idx) => `
     <div class="passenger-row row g-3 align-items-center mt-3">
-    <div class="col-md-3">
-    <label class="form-label">نام فارسی</label>
-    <input class="form-control" placeholder="نام" value="${p.firstNameFa}" data-idx="${idx}" data-field="firstNameFa">
-    </div>
-    <div class="col-md-3">
-    <label class="form-label">نام خانوادگی فارسی</label>
-    <input class="form-control" placeholder="نام خانوادگی" value="${p.lastNameFa}" data-idx="${idx}" data-field="lastNameFa">
-    </div>
-    <div class="col-md-3">
-    <label class="form-label">First Name</label>
-    <input class="form-control" placeholder="First" value="${p.firstNameEn}" data-idx="${idx}" data-field="firstNameEn">
-    </div>
-    <div class="col-md-3">
-    <label class="form-label">Last Name</label>
-    <input class="form-control" placeholder="Last" value="${p.lastNameEn}" data-idx="${idx}" data-field="lastNameEn">
-    </div>
+    <div class="col-md-3"><label class="form-label">نام فارسی</label><input class="form-control" placeholder="نام" value="${p.firstNameFa}" data-idx="${idx}" data-field="firstNameFa"></div>
+    <div class="col-md-3"><label class="form-label">نام خانوادگی فارسی</label><input class="form-control" placeholder="نام خانوادگی" value="${p.lastNameFa}" data-idx="${idx}" data-field="lastNameFa"></div>
+    <div class="col-md-3"><label class="form-label">First Name</label><input class="form-control" placeholder="First" value="${p.firstNameEn}" data-idx="${idx}" data-field="firstNameEn"></div>
+    <div class="col-md-3"><label class="form-label">Last Name</label><input class="form-control" placeholder="Last" value="${p.lastNameEn}" data-idx="${idx}" data-field="lastNameEn"></div>
     ${idx > 0 ? `<div class="col-12 text-end"><button type="button" class="btn btn-danger btn-sm remove-passenger" data-idx="${idx}">حذف مسافر</button></div>` : ''}
     </div>`).join('');
 
@@ -510,7 +493,6 @@ function renderPassengerInputs() {
             renderPassengerInputs();
         });
     });
-
     listDiv.querySelectorAll('input').forEach(input => {
         input.addEventListener('input', (e) => {
             const target = e.target as HTMLInputElement;
@@ -519,35 +501,31 @@ function renderPassengerInputs() {
             passengers[idx][field] = target.value;
         });
     });
-
     document.getElementById('addPassengerBtn')!.onclick = () => {
         passengers.push({ firstNameFa: '', lastNameFa: '', firstNameEn: '', lastNameEn: '' });
         renderPassengerInputs();
     };
 }
 
-// ---------- Form events ----------
+// ---------- Form events (unchanged) ----------
 function attachFormEvents(existingTicket?: any) {
     const form = document.getElementById('ticketForm')!;
     document.getElementById('cancelFormBtn')!.onclick = () => {
         const container = document.getElementById('formContainer')!;
         container.classList.remove('visible');
     };
-
     document.querySelectorAll('.numeric').forEach(inp => {
         inp.addEventListener('input', (e) => {
             const target = e.target as HTMLInputElement;
             target.value = toPersianDigits(toEnglishDigits(target.value).replace(/[^0-9]/g, ''));
         });
     });
-
     const priceInp = document.getElementById('ticketPrice') as HTMLInputElement;
     priceInp.addEventListener('input', () => {
         const raw = toEnglishDigits(priceInp.value).replace(/,/g, '');
         if (raw === '') { priceInp.value = ''; return; }
         priceInp.value = formatPrice(raw);
     });
-
     document.querySelector('.auto-watcher')?.addEventListener('click', () => {
         (document.getElementById('watcher') as HTMLInputElement).value = toPersianDigits(generateWatcher());
     });
@@ -557,7 +535,6 @@ function attachFormEvents(existingTicket?: any) {
     document.querySelector('.auto-flight')?.addEventListener('click', () => {
         (document.getElementById('flightNumber') as HTMLInputElement).value = generateFlightNumber();
     });
-
     const penaltyInp = document.getElementById('penaltyPercent') as HTMLInputElement;
     const totalInp = document.getElementById('totalPrice') as HTMLInputElement;
     const updateTotal = () => {
@@ -571,7 +548,6 @@ function attachFormEvents(existingTicket?: any) {
 
     form.onsubmit = async (e) => {
         e.preventDefault();
-
         const shared = {
             origin_city: $('#originCity').val() as string,
             destination_city: $('#destCity').val() as string,
@@ -588,11 +564,7 @@ function attachFormEvents(existingTicket?: any) {
             watcher: toEnglishDigits((document.getElementById('watcher') as HTMLInputElement).value),
             reference: (document.getElementById('reference') as HTMLInputElement).value,
         };
-
-        if (!passengers.length) {
-            Swal.fire('خطا', 'حداقل یک مسافر وارد کنید.', 'error');
-            return;
-        }
+        if (!passengers.length) { Swal.fire('خطا', 'حداقل یک مسافر وارد کنید.', 'error'); return; }
 
         if (editingId) {
             const p = passengers[0];
@@ -623,7 +595,6 @@ function attachFormEvents(existingTicket?: any) {
             }
             Swal.fire('موفق', 'بلیط(ها) با موفقیت ذخیره شد.', 'success');
         }
-
         const container = document.getElementById('formContainer')!;
         container.classList.remove('visible');
         editingId = null;
@@ -633,9 +604,7 @@ function attachFormEvents(existingTicket?: any) {
 }
 
 // ---------- Auto‑update handlers ----------
-
 if (window.electronAPI) {
-    // Loading indicator
     let updateSwal: any = null;
 
     window.electronAPI.onUpdateMessage((msg: string) => {
@@ -646,7 +615,6 @@ if (window.electronAPI) {
             didOpen: () => Swal.showLoading()
         });
     });
-
     window.electronAPI.onUpdateAvailable((info: any) => {
         if (updateSwal) Swal.close();
         updateSwal = null;
@@ -658,12 +626,9 @@ if (window.electronAPI) {
             confirmButtonText: 'دانلود',
             cancelButtonText: 'بعدا',
         }).then((result) => {
-            if (result.isConfirmed) {
-                window.electronAPI.startDownload();
-            }
+            if (result.isConfirmed) window.electronAPI.startDownload();
         });
     });
-
     window.electronAPI.onUpdateNotAvailable(() => {
         if (updateSwal) Swal.close();
         updateSwal = null;
@@ -675,13 +640,11 @@ if (window.electronAPI) {
             showConfirmButton: false
         });
     });
-
     window.electronAPI.onUpdateError((err: any) => {
         if (updateSwal) Swal.close();
         updateSwal = null;
         Swal.fire('خطا در بررسی به‌روزرسانی', err.message || 'خطای ناشناخته', 'error');
     });
-
     window.electronAPI.onUpdateDownloaded(() => {
         if (updateSwal) Swal.close();
         updateSwal = null;
@@ -693,11 +656,10 @@ if (window.electronAPI) {
             confirmButtonText: 'نصب و راه‌اندازی مجدد',
             cancelButtonText: 'بعدا',
         }).then((result) => {
-            if (result.isConfirmed) {
-                window.electronAPI.installUpdate();
-            }
+            if (result.isConfirmed) window.electronAPI.installUpdate();
         });
     });
 }
+
 // ---------- Initial load ----------
 loadTickets();

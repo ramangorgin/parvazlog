@@ -27,6 +27,27 @@
         </svg>
         ثبت بلیط جدید
       </button>
+      <button id="importExcelBtn" class="btn btn-success">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-excel" viewBox="0 0 16 16">
+          <path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.781l2.116 2.539a.5.5 0 0 0 .768-.64L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.219l-2.116-2.54z"/>
+          <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+        </svg>
+        ورود از Excel
+      </button>
+      <button id="exportExcelBtn" class="btn btn-warning">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-spreadsheet" viewBox="0 0 16 16">
+          <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+          <path d="M5 10.5a.5.5 0 0 1 .5-.5h1.793L5.146 7.854a.5.5 0 1 1 .708-.708L8 9.293l2.146-2.147a.5.5 0 0 1 .708.708L8.707 10h1.793a.5.5 0 0 1 0 1h-1.793l2.147 2.146a.5.5 0 0 1-.708.708L8 11.707l-2.146 2.147a.5.5 0 0 1-.708-.708L7.293 11H5.5a.5.5 0 0 1-.5-.5z"/>
+        </svg>
+        خروجی Excel
+      </button>
+      <button id="clearAllBtn" class="btn btn-danger">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+          <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+          <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+        </svg>
+        حذف همه رکوردها
+      </button>
       <div class="ms-auto">
         <button id="previewSelectedBtn" class="btn btn-secondary" disabled>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-eye me-1" viewBox="0 0 16 16">
@@ -38,9 +59,8 @@
       </div>
     </div>
 
-    <!-- Combined search, sort, and pagination controls (all in one row) -->
+    <!-- Combined search, sort, and pagination controls -->
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
-      <!-- Left side: sort button and search input -->
       <div class="d-flex align-items-center gap-2 flex-grow-1">
         <button id="sortBtn" class="btn btn-outline-secondary btn-sm text-nowrap">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-down-up" viewBox="0 0 16 16">
@@ -50,8 +70,6 @@
         </button>
         <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="جستجو در رکوردها..." style="max-width: 250px;">
       </div>
-
-      <!-- Right side: page size and pagination -->
       <div class="d-flex align-items-center gap-2">
         <label class="form-label mb-0 text-nowrap">تعداد در صفحه:</label>
         <select id="pageSizeSelect" class="form-select form-select-sm" style="width: auto;">
@@ -68,7 +86,7 @@
       </div>
     </div>
 
-    <!-- Form container (hidden by default via max-height) -->
+    <!-- Form container -->
     <div id="formContainer" class="card p-3 mb-4"></div>
 
     <!-- Tickets table -->
@@ -78,11 +96,12 @@
           <tr>
             <th><input type="checkbox" id="selectAll"></th>
             <th>ردیف</th>
-            <th>نام مسافر</th>
-            <th>مبدا</th>
-            <th>مقصد</th>
-            <th>تاریخ</th>
-            <th>پرواز</th>
+            <th>نام و نام خانوادگی</th>
+            <th>مبدأ (شهر)</th>
+            <th>مقصد (شهر)</th>
+            <th>تاریخ پرواز</th>
+            <th>ساعت</th>
+            <th>مبلغ بلیط (ریال)</th>
             <th>عملیات</th>
           </tr>
         </thead>
@@ -91,7 +110,7 @@
     </div>
   </div>
 
-  <!-- Preview modal -->
+  <!-- Preview modal (unchanged) -->
   <div class="modal fade" id="previewModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -101,26 +120,9 @@
         </div>
         <div class="modal-body" id="previewContent"></div>
         <div class="modal-footer d-flex justify-content-end gap-2">
-          <button id="printPreviewBtn" class="btn btn-outline-primary px-4">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-printer me-2" viewBox="0 0 16 16">
-              <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
-              <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zm1 2a1 1 0 0 0-1 1v2h6V4a1 1 0 0 0-1-1H6zm7 4H3a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v-1a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1h1a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1zm-2 5v2a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z"/>
-            </svg>
-            چاپ
-          </button>
-          <button id="exportPreviewBtn" class="btn btn-outline-success px-4">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-image me-2" viewBox="0 0 16 16">
-              <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
-              <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/>
-            </svg>
-            خروجی تصویر
-          </button>
-          <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-x-lg me-2" viewBox="0 0 16 16">
-              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
-            </svg>
-            بستن
-          </button>
+          <button id="printPreviewBtn" class="btn btn-outline-primary px-4">چاپ</button>
+          <button id="exportPreviewBtn" class="btn btn-outline-success px-4">خروجی تصویر</button>
+          <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">بستن</button>
         </div>
       </div>
     </div>
