@@ -91,7 +91,6 @@ async function downloadUpdate(url: string) {
         const fileName = path.basename(url);
         const tempFilePath = path.join(tempDir, fileName);
 
-        // Use net module to download with progress
         const request = net.request(url);
         request.on('response', (response: any) => {
             const totalLength = parseInt(response.headers['content-length'] || '0', 10);
@@ -110,7 +109,6 @@ async function downloadUpdate(url: string) {
             response.on('end', () => {
                 const data = Buffer.concat(chunks);
                 fs.writeFileSync(tempFilePath, data);
-                // Move to app directory
                 const exePath = path.join(path.dirname(app.getPath('exe')), 'Parvazlog.exe');
                 fs.copyFileSync(tempFilePath, exePath);
                 win.webContents.send('update-downloaded');
@@ -130,11 +128,6 @@ async function downloadUpdate(url: string) {
 app.whenReady().then(() => {
     initDatabase();
     createWindow();
-
-    // Check for updates silently on startup (only when packaged)
-    if (app.isPackaged) {
-        setTimeout(() => checkForUpdates(), 5000);
-    }
 
     // ---------- Database IPC ----------
     ipcMain.handle('db:getAllTickets', () => getDb().prepare('SELECT * FROM tickets ORDER BY row_number ASC').all());
@@ -195,41 +188,7 @@ app.whenReady().then(() => {
         return { success: true };
     });
 
-    // ---------- Export path config ----------
-    const configPath = path.join(app.getPath('userData'), 'config.json');
-
-    function getConfig(): { exportPath: string } {
-        try {
-            if (fs.existsSync(configPath)) {
-                return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-            }
-        } catch (e) {}
-        return { exportPath: '' };
-    }
-
-    function saveConfig(config: { exportPath: string }) {
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-    }
-
-    ipcMain.handle('get-export-path', () => {
-        return getConfig().exportPath;
-    });
-
-    ipcMain.handle('set-export-path', async () => {
-        const { filePaths } = await dialog.showOpenDialog({
-            properties: ['openDirectory'],
-            title: 'Select export folder'
-        });
-        if (filePaths && filePaths.length > 0) {
-            const config = getConfig();
-            config.exportPath = filePaths[0];
-            saveConfig(config);
-            return filePaths[0];
-        }
-        return null;
-    });
-
-    // Modify the existing save-image handler to accept an optional direct path
+    // Image save
     ipcMain.handle('save-image', async (_, dataUrl: string, defaultName: string, useDefaultPath: boolean = true) => {
         const config = getConfig();
         let filePath: string | null = null;
@@ -411,4 +370,38 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
+});
+
+// ---------- Export path config ----------
+const configPath = path.join(app.getPath('userData'), 'config.json');
+
+function getConfig(): { exportPath: string } {
+    try {
+        if (fs.existsSync(configPath)) {
+            return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        }
+    } catch (e) {}
+    return { exportPath: '' };
+}
+
+function saveConfig(config: { exportPath: string }) {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+}
+
+ipcMain.handle('get-export-path', () => {
+    return getConfig().exportPath;
+});
+
+ipcMain.handle('set-export-path', async () => {
+    const { filePaths } = await dialog.showOpenDialog({
+        properties: ['openDirectory'],
+        title: 'Select export folder'
+    });
+    if (filePaths && filePaths.length > 0) {
+        const config = getConfig();
+        config.exportPath = filePaths[0];
+        saveConfig(config);
+        return filePaths[0];
+    }
+    return null;
 });

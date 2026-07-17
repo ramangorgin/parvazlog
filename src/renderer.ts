@@ -26,7 +26,7 @@ let searchTerm = '';
 let sortDirection: 'asc' | 'desc' = 'asc';
 let currentPage = 1;
 let pageSize = 10;
-let yearFilter = ''; // selected Jalali year
+let yearFilter = '';
 
 // ---------- Utility ----------
 function computeTotal(price: number, penalty: number): number {
@@ -73,7 +73,6 @@ async function loadTickets() {
 }
 
 function renderTable() {
-    // 1. Filter by year and search term
     let filtered = tickets;
     if (yearFilter) {
         filtered = filtered.filter(t => t.flight_date.startsWith(yearFilter + '/'));
@@ -86,23 +85,19 @@ function renderTable() {
         });
     }
 
-    // 2. Sort
     const sorted = [...filtered].sort((a, b) => {
         const diff = a.row_number - b.row_number;
         return sortDirection === 'asc' ? diff : -diff;
     });
 
-    // 3. Paginate
     const totalPages = pageSize === 0 ? 1 : Math.ceil(sorted.length / pageSize);
     const start = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
     const paginated = pageSize === 0 ? sorted : sorted.slice(start, start + pageSize);
 
-    // 4. Update pagination controls
     document.getElementById('pageInfo')!.textContent = `صفحه ${currentPage} از ${totalPages}`;
     (document.getElementById('prevPageBtn') as HTMLButtonElement).disabled = currentPage <= 1;
     (document.getElementById('nextPageBtn') as HTMLButtonElement).disabled = currentPage >= totalPages;
 
-    // 5. Build table body
     const tbody = document.getElementById('ticketsTableBody')!;
     tbody.innerHTML = '';
     paginated.forEach((t: any) => {
@@ -173,6 +168,12 @@ function getSelectedIds(): number[] {
     .map((cb: any) => parseInt(cb.dataset.id));
 }
 
+function clearSelection() {
+    (document.getElementById('selectAll') as HTMLInputElement).checked = false;
+    document.querySelectorAll('.ticket-checkbox').forEach((cb: any) => cb.checked = false);
+    updateMultiButtons();
+}
+
 function updateMultiButtons() {
     const sel = getSelectedIds();
     (document.getElementById('previewSelectedBtn') as HTMLButtonElement).disabled = sel.length === 0;
@@ -208,8 +209,21 @@ function showPreview(ticketsToPreview: any[]) {
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
 
-        (document.getElementById('printPreviewBtn')!).onclick = () => window.print();
-        (document.getElementById('exportPreviewBtn')!).onclick = () => exportPreviewAsImage();
+        (document.getElementById('printPreviewBtn')!).onclick = () => {
+            window.print();
+            modal.hide();           // close modal after print
+            clearSelection();       // deselect checkboxes
+        };
+        (document.getElementById('exportPreviewBtn')!).onclick = async () => {
+            await exportPreviewAsImage();
+            modal.hide();           // close modal after export
+            clearSelection();       // deselect checkboxes
+        };
+
+        // Also clear selection when modal is closed manually
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            clearSelection();
+        });
 }
 
 function buildPreviewHTML(ticket: any): string {
@@ -307,23 +321,6 @@ async function exportPreviewAsImage() {
     }
 }
 
-// ---------- Export path setting ----------
-document.getElementById('setExportPathBtn')!.addEventListener('click', async () => {
-    const path = await api.setExportPath();
-    if (path) {
-        Swal.fire('تنظیم شد', `مسیر خروجی: ${path}`, 'success');
-    }
-});
-
-// Load and display current path on startup (optional)
-(async () => {
-    const currentPath = await api.getExportPath();
-    if (currentPath) {
-        // You can show it in a tooltip or small label; for now we just keep it silent
-        (document.getElementById('setExportPathBtn') as HTMLElement).title = `Current: ${currentPath}`;
-    }
-})();
-
 // ---------- Multi‑select preview button ----------
 document.getElementById('previewSelectedBtn')!.addEventListener('click', () => {
     const ids = getSelectedIds();
@@ -346,6 +343,7 @@ document.getElementById('deleteSelectedBtn')!.addEventListener('click', async ()
     if (confirm.isConfirmed) {
         await api.deleteMultipleTickets(ids);
         loadTickets();
+        clearSelection();
         Swal.fire('حذف شد', `${ids.length} رکورد حذف شد.`, 'success');
     }
 });
@@ -422,7 +420,21 @@ document.getElementById('exportExcelBtn')!.addEventListener('click', async () =>
     await api.exportExcel();
 });
 
-// ---------- Form building ----------
+// ---------- Export path setting ----------
+document.getElementById('setExportPathBtn')!.addEventListener('click', async () => {
+    const path = await api.setExportPath();
+    if (path) {
+        Swal.fire('تنظیم شد', `مسیر خروجی: ${path}`, 'success');
+    }
+});
+(async () => {
+    const currentPath = await api.getExportPath();
+    if (currentPath) {
+        (document.getElementById('setExportPathBtn') as HTMLElement).title = `Current: ${currentPath}`;
+    }
+})();
+
+// ---------- Form building (unchanged) ----------
 function buildForm(existingTicket?: any) {
     const container = document.getElementById('formContainer')!;
     container.classList.add('visible');
@@ -508,13 +520,11 @@ function buildForm(existingTicket?: any) {
 
     container.innerHTML = html;
 
-    // Searchable selects (cities, airports)
     $('.searchable:not(#airline)').select2({
         placeholder: 'جستجو...',
         language: { noResults: () => 'نتیجه‌ای یافت نشد' }
     });
 
-    // Airline with custom tags
     $('#airline').select2({
         placeholder: 'انتخاب کنید یا بنویسید',
         language: { noResults: () => 'نتیجه‌ای یافت نشد' },
@@ -522,7 +532,6 @@ function buildForm(existingTicket?: any) {
                           createTag: (params: any) => {
                               const term = params.term.trim();
                               if (term === '') return null;
-                              // Avoid duplicate if already exists
                               if (airlines.find(a => a.persianName === term)) return null;
                               return { id: term, text: term, newTag: true };
                           }
@@ -562,7 +571,7 @@ function buildForm(existingTicket?: any) {
     attachFormEvents(existingTicket);
 }
 
-// ---------- Passenger management ----------
+// ---------- Passenger management (unchanged) ----------
 function renderPassengerInputs() {
     const listDiv = document.getElementById('passengerList')!;
     listDiv.innerHTML = passengers.map((p, idx) => `
@@ -595,7 +604,7 @@ function renderPassengerInputs() {
     };
 }
 
-// ---------- Form events ----------
+// ---------- Form events (unchanged) ----------
 function attachFormEvents(existingTicket?: any) {
     const form = document.getElementById('ticketForm')!;
     document.getElementById('cancelFormBtn')!.onclick = () => {
@@ -643,7 +652,7 @@ function attachFormEvents(existingTicket?: any) {
             destination_airport: $('#destAirport').val() as string,
             flight_date: (document.getElementById('flightDate') as HTMLInputElement).value,
             flight_time: `${(document.getElementById('flightHour') as HTMLSelectElement).value}:${(document.getElementById('flightMinute') as HTMLSelectElement).value}`,
-            airline: $('#airline').val() as string,   // may be a new custom string
+            airline: $('#airline').val() as string,
             flight_number: (document.getElementById('flightNumber') as HTMLInputElement).value,
             max_baggage: parseInt(toEnglishDigits((document.getElementById('maxBaggage') as HTMLInputElement).value)) || 20,
             ticket_price: unformatPrice(priceInp.value),
@@ -653,10 +662,8 @@ function attachFormEvents(existingTicket?: any) {
             reference: (document.getElementById('reference') as HTMLInputElement).value,
         };
 
-        // If airline is a new custom name, we should add it to the global list
         const airlineVal = shared.airline;
         if (airlineVal && !airlines.find(a => a.persianName === airlineVal)) {
-            // It's a new airline – add it (with empty English name and code for now)
             airlines.push({ persianName: airlineVal, englishName: airlineVal, code: '' });
         }
 
@@ -699,7 +706,7 @@ function attachFormEvents(existingTicket?: any) {
     };
 }
 
-// ---------- Auto‑update handlers ----------
+// ---------- Auto‑update handlers (unchanged) ----------
 if (window.electronAPI) {
     let updateSwal: any = null;
 
@@ -724,7 +731,6 @@ if (window.electronAPI) {
             cancelButtonText: 'بعدا',
         }).then((result) => {
             if (result.isConfirmed) {
-                // Show download progress
                 Swal.fire({
                     title: 'در حال دانلود',
                     html: '<div class="progress"><div class="progress-bar" role="progressbar" style="width: 0%" id="updateProgressBar">0%</div></div>',
@@ -732,7 +738,6 @@ if (window.electronAPI) {
                     showConfirmButton: false,
                     didOpen: () => {
                         Swal.showLoading();
-                        // Start download
                         window.electronAPI.startDownload(info.url);
                     }
                 });

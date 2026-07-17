@@ -3537,6 +3537,11 @@
   function getSelectedIds() {
     return Array.from(document.querySelectorAll(".ticket-checkbox:checked")).map((cb) => parseInt(cb.dataset.id));
   }
+  function clearSelection() {
+    document.getElementById("selectAll").checked = false;
+    document.querySelectorAll(".ticket-checkbox").forEach((cb) => cb.checked = false);
+    updateMultiButtons();
+  }
   function updateMultiButtons() {
     const sel = getSelectedIds();
     document.getElementById("previewSelectedBtn").disabled = sel.length === 0;
@@ -3566,8 +3571,19 @@
     const modalEl = document.getElementById("previewModal");
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
-    document.getElementById("printPreviewBtn").onclick = () => window.print();
-    document.getElementById("exportPreviewBtn").onclick = () => exportPreviewAsImage();
+    document.getElementById("printPreviewBtn").onclick = () => {
+      window.print();
+      modal.hide();
+      clearSelection();
+    };
+    document.getElementById("exportPreviewBtn").onclick = async () => {
+      await exportPreviewAsImage();
+      modal.hide();
+      clearSelection();
+    };
+    modalEl.addEventListener("hidden.bs.modal", () => {
+      clearSelection();
+    });
   }
   function buildPreviewHTML(ticket) {
     const passengerNameEn = ticket.first_name_english && ticket.last_name_english ? `${ticket.first_name_english} ${ticket.last_name_english}` : `${ticket.first_name_persian} ${ticket.last_name_persian}`;
@@ -3654,18 +3670,6 @@
       import_sweetalert2.default.fire("\u0630\u062E\u06CC\u0631\u0647 \u0634\u062F", `${savedCount} \u0641\u0627\u06CC\u0644 \u0628\u0627 \u0645\u0648\u0641\u0642\u06CC\u062A \u0630\u062E\u06CC\u0631\u0647 \u0634\u062F.`, "success");
     }
   }
-  document.getElementById("setExportPathBtn").addEventListener("click", async () => {
-    const path = await api.setExportPath();
-    if (path) {
-      import_sweetalert2.default.fire("\u062A\u0646\u0638\u06CC\u0645 \u0634\u062F", `\u0645\u0633\u06CC\u0631 \u062E\u0631\u0648\u062C\u06CC: ${path}`, "success");
-    }
-  });
-  (async () => {
-    const currentPath = await api.getExportPath();
-    if (currentPath) {
-      document.getElementById("setExportPathBtn").title = `Current: ${currentPath}`;
-    }
-  })();
   document.getElementById("previewSelectedBtn").addEventListener("click", () => {
     const ids = getSelectedIds();
     const selected = tickets.filter((t) => ids.includes(t.id));
@@ -3685,6 +3689,7 @@
     if (confirm.isConfirmed) {
       await api.deleteMultipleTickets(ids);
       loadTickets();
+      clearSelection();
       import_sweetalert2.default.fire("\u062D\u0630\u0641 \u0634\u062F", `${ids.length} \u0631\u06A9\u0648\u0631\u062F \u062D\u0630\u0641 \u0634\u062F.`, "success");
     }
   });
@@ -3752,6 +3757,18 @@
   document.getElementById("exportExcelBtn").addEventListener("click", async () => {
     await api.exportExcel();
   });
+  document.getElementById("setExportPathBtn").addEventListener("click", async () => {
+    const path = await api.setExportPath();
+    if (path) {
+      import_sweetalert2.default.fire("\u062A\u0646\u0638\u06CC\u0645 \u0634\u062F", `\u0645\u0633\u06CC\u0631 \u062E\u0631\u0648\u062C\u06CC: ${path}`, "success");
+    }
+  });
+  (async () => {
+    const currentPath = await api.getExportPath();
+    if (currentPath) {
+      document.getElementById("setExportPathBtn").title = `Current: ${currentPath}`;
+    }
+  })();
   function buildForm(existingTicket) {
     const container = document.getElementById("formContainer");
     container.classList.add("visible");
@@ -3956,7 +3973,6 @@
         flight_date: document.getElementById("flightDate").value,
         flight_time: `${document.getElementById("flightHour").value}:${document.getElementById("flightMinute").value}`,
         airline: $("#airline").val(),
-        // may be a new custom string
         flight_number: document.getElementById("flightNumber").value,
         max_baggage: parseInt(toEnglishDigits(document.getElementById("maxBaggage").value)) || 20,
         ticket_price: unformatPrice(priceInp.value),

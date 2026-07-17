@@ -124,7 +124,6 @@ async function downloadUpdate(url) {
         const tempDir = electron_1.app.getPath('temp');
         const fileName = path.basename(url);
         const tempFilePath = path.join(tempDir, fileName);
-        // Use net module to download with progress
         const request = electron_1.net.request(url);
         request.on('response', (response) => {
             const totalLength = parseInt(response.headers['content-length'] || '0', 10);
@@ -141,7 +140,6 @@ async function downloadUpdate(url) {
             response.on('end', () => {
                 const data = Buffer.concat(chunks);
                 fs.writeFileSync(tempFilePath, data);
-                // Move to app directory
                 const exePath = path.join(path.dirname(electron_1.app.getPath('exe')), 'Parvazlog.exe');
                 fs.copyFileSync(tempFilePath, exePath);
                 win.webContents.send('update-downloaded');
@@ -160,10 +158,6 @@ async function downloadUpdate(url) {
 electron_1.app.whenReady().then(() => {
     (0, database_1.initDatabase)();
     createWindow();
-    // Check for updates silently on startup (only when packaged)
-    if (electron_1.app.isPackaged) {
-        setTimeout(() => checkForUpdates(), 5000);
-    }
     // ---------- Database IPC ----------
     electron_1.ipcMain.handle('db:getAllTickets', () => (0, database_1.getDb)().prepare('SELECT * FROM tickets ORDER BY row_number ASC').all());
     electron_1.ipcMain.handle('db:getTicketById', (_, id) => (0, database_1.getDb)().prepare('SELECT * FROM tickets WHERE id = ?').get(id));
@@ -201,37 +195,7 @@ electron_1.app.whenReady().then(() => {
         (0, database_1.getDb)().prepare('DELETE FROM tickets').run();
         return { success: true };
     });
-    // ---------- Export path config ----------
-    const configPath = path.join(electron_1.app.getPath('userData'), 'config.json');
-    function getConfig() {
-        try {
-            if (fs.existsSync(configPath)) {
-                return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-            }
-        }
-        catch (e) { }
-        return { exportPath: '' };
-    }
-    function saveConfig(config) {
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-    }
-    electron_1.ipcMain.handle('get-export-path', () => {
-        return getConfig().exportPath;
-    });
-    electron_1.ipcMain.handle('set-export-path', async () => {
-        const { filePaths } = await electron_1.dialog.showOpenDialog({
-            properties: ['openDirectory'],
-            title: 'Select export folder'
-        });
-        if (filePaths && filePaths.length > 0) {
-            const config = getConfig();
-            config.exportPath = filePaths[0];
-            saveConfig(config);
-            return filePaths[0];
-        }
-        return null;
-    });
-    // Modify the existing save-image handler to accept an optional direct path
+    // Image save
     electron_1.ipcMain.handle('save-image', async (_, dataUrl, defaultName, useDefaultPath = true) => {
         const config = getConfig();
         let filePath = null;
@@ -409,4 +373,34 @@ electron_1.app.whenReady().then(() => {
 electron_1.app.on('window-all-closed', () => {
     if (process.platform !== 'darwin')
         electron_1.app.quit();
+});
+// ---------- Export path config ----------
+const configPath = path.join(electron_1.app.getPath('userData'), 'config.json');
+function getConfig() {
+    try {
+        if (fs.existsSync(configPath)) {
+            return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        }
+    }
+    catch (e) { }
+    return { exportPath: '' };
+}
+function saveConfig(config) {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+}
+electron_1.ipcMain.handle('get-export-path', () => {
+    return getConfig().exportPath;
+});
+electron_1.ipcMain.handle('set-export-path', async () => {
+    const { filePaths } = await electron_1.dialog.showOpenDialog({
+        properties: ['openDirectory'],
+        title: 'Select export folder'
+    });
+    if (filePaths && filePaths.length > 0) {
+        const config = getConfig();
+        config.exportPath = filePaths[0];
+        saveConfig(config);
+        return filePaths[0];
+    }
+    return null;
 });
