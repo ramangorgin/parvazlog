@@ -3596,9 +3596,9 @@
     </div>
 
     <div class="row mt-5">
-    <div class="col-12 text-start">
-    <span class="border-top border-dark border-2 pt-2 d-inline-block">Seal and signature</span>
-    </div>
+        <div class="col-12 text-end">
+            <span class="border-top border-dark border-2 pt-2 d-inline-block">Seal and signature</span>
+        </div>
     </div>
     </div>`;
   }

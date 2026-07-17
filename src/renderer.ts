@@ -220,13 +220,13 @@ function buildPreviewHTML(ticket: any): string {
     </div>
 
     <div class="text-center mb-4">
-    Passenger List:<br>
+    Passenger List<br>
     <span class="fs-5">${passengerNameEn}</span>
     </div>
 
     <div class="row mb-4">
     <div>
-    Amount:<br>
+    Amount<br>
     ${ticket.ticket_price.toLocaleString()}
     </div>
     </div>
@@ -236,9 +236,9 @@ function buildPreviewHTML(ticket: any): string {
     </div>
 
     <div class="row mt-5">
-    <div class="col-12 text-start">
-    <span class="border-top border-dark border-2 pt-2 d-inline-block">Seal and signature</span>
-    </div>
+        <div class="col-12 text-end">
+            <span class="border-top border-dark border-2 pt-2 d-inline-block">Seal and signature</span>
+        </div>
     </div>
     </div>`;
 }
