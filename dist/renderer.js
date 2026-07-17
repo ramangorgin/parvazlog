@@ -3394,13 +3394,13 @@
     { persianName: "\u067E\u0648\u06CC\u0627", englishName: "Pouya Air", code: "PYA" },
     { persianName: "\u06A9\u0627\u0631\u0648\u0646", englishName: "Karun Airlines", code: "IRK" }
   ];
+  function getAirlineEnglish(persian) {
+    const found = airlines.find((a) => a.persianName === persian);
+    return found ? found.englishName : persian;
+  }
   function getCityEnglish(persian) {
     const f = cityAirports.find((c) => c.persianCity === persian);
     return f ? f.englishCity : persian;
-  }
-  function getAirlineEnglish(persian) {
-    const f = airlines.find((a) => a.persianName === persian);
-    return f ? f.englishName : persian;
   }
 
   // src/renderer.ts
@@ -3415,6 +3415,7 @@
   var sortDirection = "asc";
   var currentPage = 1;
   var pageSize = 10;
+  var yearFilter = "";
   function computeTotal(price, penalty) {
     return Math.round(price * (1 - penalty / 100));
   }
@@ -3431,17 +3432,38 @@
   function unformatPrice(str) {
     return parseInt(toEnglishDigits(str).replace(/,/g, "")) || 0;
   }
+  function populateYearFilter() {
+    const years = /* @__PURE__ */ new Set();
+    tickets.forEach((t) => {
+      const y = t.flight_date.split("/")[0];
+      if (y) years.add(y);
+    });
+    const select = document.getElementById("yearFilterSelect");
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">\u0647\u0645\u0647</option>';
+    Array.from(years).sort().forEach((y) => {
+      select.add(new Option(y, y));
+    });
+    select.value = yearFilter || "";
+  }
   async function loadTickets() {
     tickets = await api.getAllTickets();
     currentPage = 1;
+    populateYearFilter();
     renderTable();
   }
   function renderTable() {
+    let filtered = tickets;
+    if (yearFilter) {
+      filtered = filtered.filter((t) => t.flight_date.startsWith(yearFilter + "/"));
+    }
     const filter = searchTerm.toLowerCase().trim();
-    const filtered = filter === "" ? tickets : tickets.filter((t) => {
-      const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_time} ${t.ticket_price}`.toLowerCase();
-      return text.includes(filter);
-    });
+    if (filter) {
+      filtered = filtered.filter((t) => {
+        const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_time} ${t.ticket_price}`.toLowerCase();
+        return text.includes(filter);
+      });
+    }
     const sorted = [...filtered].sort((a, b) => {
       const diff = a.row_number - b.row_number;
       return sortDirection === "asc" ? diff : -diff;
@@ -3518,6 +3540,7 @@
   function updateMultiButtons() {
     const sel = getSelectedIds();
     document.getElementById("previewSelectedBtn").disabled = sel.length === 0;
+    document.getElementById("deleteSelectedBtn").disabled = sel.length === 0;
   }
   async function editTicket(id) {
     const ticket = await api.getTicketById(id);
@@ -3580,13 +3603,13 @@
     </div>
 
     <div class="text-center mb-4">
-    Passenger List:<br>
+    Passenger List<br>
     <span class="fs-5">${passengerNameEn}</span>
     </div>
 
     <div class="row mb-4">
     <div>
-    Amount:<br>
+    Amount<br>
     ${ticket.ticket_price.toLocaleString()}
     </div>
     </div>
@@ -3596,9 +3619,9 @@
     </div>
 
     <div class="row mt-5">
-        <div class="col-12 text-end">
-            <span class="border-top border-dark border-2 pt-2 d-inline-block">Seal and signature</span>
-        </div>
+    <div class="col-12 text-end">
+    <span class="border-top border-dark border-2 pt-2 d-inline-block">Seal and signature</span>
+    </div>
     </div>
     </div>`;
   }
@@ -3636,6 +3659,23 @@
     const selected = tickets.filter((t) => ids.includes(t.id));
     if (selected.length) showPreview(selected);
   });
+  document.getElementById("deleteSelectedBtn").addEventListener("click", async () => {
+    const ids = getSelectedIds();
+    if (ids.length === 0) return;
+    const confirm = await import_sweetalert2.default.fire({
+      title: "\u062D\u0630\u0641 \u0627\u0646\u062A\u062E\u0627\u0628\u200C\u0647\u0627",
+      text: `\u0622\u06CC\u0627 \u0645\u0637\u0645\u0626\u0646 \u0647\u0633\u062A\u06CC\u062F \u06A9\u0647 \u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u06CC\u062F ${ids.length} \u0631\u06A9\u0648\u0631\u062F \u0631\u0627 \u062D\u0630\u0641 \u06A9\u0646\u06CC\u062F\u061F`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "\u0628\u0644\u0647\u060C \u062D\u0630\u0641 \u06A9\u0646",
+      cancelButtonText: "\u0644\u063A\u0648"
+    });
+    if (confirm.isConfirmed) {
+      await api.deleteMultipleTickets(ids);
+      loadTickets();
+      import_sweetalert2.default.fire("\u062D\u0630\u0641 \u0634\u062F", `${ids.length} \u0631\u06A9\u0648\u0631\u062F \u062D\u0630\u0641 \u0634\u062F.`, "success");
+    }
+  });
   document.getElementById("sortBtn").addEventListener("click", () => {
     sortDirection = sortDirection === "asc" ? "desc" : "asc";
     document.getElementById("sortLabel").textContent = sortDirection === "asc" ? "\u0635\u0639\u0648\u062F\u06CC" : "\u0646\u0632\u0648\u0644\u06CC";
@@ -3671,13 +3711,25 @@
     currentPage = 1;
     renderTable();
   });
+  document.getElementById("yearFilterSelect").addEventListener("change", (e) => {
+    yearFilter = e.target.value;
+    currentPage = 1;
+    renderTable();
+  });
   document.getElementById("newTicketBtn").addEventListener("click", () => {
     editingId = null;
     passengers = [{ firstNameFa: "", lastNameFa: "", firstNameEn: "", lastNameEn: "" }];
     buildForm();
   });
   document.getElementById("importExcelBtn").addEventListener("click", async () => {
+    import_sweetalert2.default.fire({
+      title: "\u062F\u0631 \u062D\u0627\u0644 \u0628\u0627\u0631\u06AF\u0630\u0627\u0631\u06CC \u0641\u0627\u06CC\u0644 Excel",
+      html: "\u0644\u0637\u0641\u0627 \u0635\u0628\u0631 \u06A9\u0646\u06CC\u062F...",
+      allowOutsideClick: false,
+      didOpen: () => import_sweetalert2.default.showLoading()
+    });
     const result = await api.importExcel();
+    import_sweetalert2.default.close();
     if (result.success) {
       import_sweetalert2.default.fire("\u0645\u0648\u0641\u0642", `${result.count} \u0631\u06A9\u0648\u0631\u062F \u0627\u0636\u0627\u0641\u0647 \u0634\u062F.`, "success");
       loadTickets();
@@ -3687,21 +3739,6 @@
   });
   document.getElementById("exportExcelBtn").addEventListener("click", async () => {
     await api.exportExcel();
-  });
-  document.getElementById("clearAllBtn").addEventListener("click", async () => {
-    const confirm = await import_sweetalert2.default.fire({
-      title: "\u062D\u0630\u0641 \u0647\u0645\u0647 \u0631\u06A9\u0648\u0631\u062F\u0647\u0627",
-      text: "\u0622\u06CC\u0627 \u0645\u0637\u0645\u0626\u0646 \u0647\u0633\u062A\u06CC\u062F\u061F \u0627\u06CC\u0646 \u0639\u0645\u0644\u06CC\u0627\u062A \u063A\u06CC\u0631\u0642\u0627\u0628\u0644 \u0628\u0627\u0632\u06AF\u0634\u062A \u0627\u0633\u062A.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "\u0628\u0644\u0647\u060C \u0647\u0645\u0647 \u0631\u0627 \u062D\u0630\u0641 \u06A9\u0646",
-      cancelButtonText: "\u0644\u063A\u0648"
-    });
-    if (confirm.isConfirmed) {
-      await api.clearAllTickets();
-      loadTickets();
-      import_sweetalert2.default.fire("\u062D\u0630\u0641 \u0634\u062F", "\u0647\u0645\u0647 \u0631\u06A9\u0648\u0631\u062F\u0647\u0627 \u067E\u0627\u06A9 \u0634\u062F\u0646\u062F.", "success");
-    }
   });
   function buildForm(existingTicket) {
     const container = document.getElementById("formContainer");
@@ -3744,7 +3781,7 @@
     </select></div>
     <div class="col-md-6"><label class="form-label">\u0627\u06CC\u0631\u0644\u0627\u06CC\u0646</label>
     <select id="airline" class="form-select searchable" required>
-    <option value="">\u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F</option>
+    <option value="">\u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F \u06CC\u0627 \u0628\u0646\u0648\u06CC\u0633\u06CC\u062F</option>
     ${airlines.map((a) => `<option value="${a.persianName}" ${existingTicket?.airline === a.persianName ? "selected" : ""}>${a.persianName}</option>`).join("")}
     </select></div>
     <div class="col-md-3"><label class="form-label">\u0634\u0645\u0627\u0631\u0647 \u067E\u0631\u0648\u0627\u0632</label>
@@ -3783,9 +3820,20 @@
     </div>
     </form>`;
     container.innerHTML = html;
-    $(".searchable").select2({
+    $(".searchable:not(#airline)").select2({
       placeholder: "\u062C\u0633\u062A\u062C\u0648...",
       language: { noResults: () => "\u0646\u062A\u06CC\u062C\u0647\u200C\u0627\u06CC \u06CC\u0627\u0641\u062A \u0646\u0634\u062F" }
+    });
+    $("#airline").select2({
+      placeholder: "\u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC\u062F \u06CC\u0627 \u0628\u0646\u0648\u06CC\u0633\u06CC\u062F",
+      language: { noResults: () => "\u0646\u062A\u06CC\u062C\u0647\u200C\u0627\u06CC \u06CC\u0627\u0641\u062A \u0646\u0634\u062F" },
+      tags: true,
+      createTag: (params) => {
+        const term = params.term.trim();
+        if (term === "") return null;
+        if (airlines.find((a) => a.persianName === term)) return null;
+        return { id: term, text: term, newTag: true };
+      }
     });
     jalaliDatepicker.startWatch({
       input: document.getElementById("flightDate"),
@@ -3896,6 +3944,7 @@
         flight_date: document.getElementById("flightDate").value,
         flight_time: `${document.getElementById("flightHour").value}:${document.getElementById("flightMinute").value}`,
         airline: $("#airline").val(),
+        // may be a new custom string
         flight_number: document.getElementById("flightNumber").value,
         max_baggage: parseInt(toEnglishDigits(document.getElementById("maxBaggage").value)) || 20,
         ticket_price: unformatPrice(priceInp.value),
@@ -3904,6 +3953,10 @@
         watcher: toEnglishDigits(document.getElementById("watcher").value),
         reference: document.getElementById("reference").value
       };
+      const airlineVal = shared.airline;
+      if (airlineVal && !airlines.find((a) => a.persianName === airlineVal)) {
+        airlines.push({ persianName: airlineVal, englishName: airlineVal, code: "" });
+      }
       if (!passengers.length) {
         import_sweetalert2.default.fire("\u062E\u0637\u0627", "\u062D\u062F\u0627\u0642\u0644 \u06CC\u06A9 \u0645\u0633\u0627\u0641\u0631 \u0648\u0627\u0631\u062F \u06A9\u0646\u06CC\u062F.", "error");
         return;
@@ -3965,8 +4018,43 @@
         confirmButtonText: "\u062F\u0627\u0646\u0644\u0648\u062F",
         cancelButtonText: "\u0628\u0639\u062F\u0627"
       }).then((result) => {
-        if (result.isConfirmed) window.electronAPI.startDownload();
+        if (result.isConfirmed) {
+          import_sweetalert2.default.fire({
+            title: "\u062F\u0631 \u062D\u0627\u0644 \u062F\u0627\u0646\u0644\u0648\u062F",
+            html: '<div class="progress"><div class="progress-bar" role="progressbar" style="width: 0%" id="updateProgressBar">0%</div></div>',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+              import_sweetalert2.default.showLoading();
+              window.electronAPI.startDownload(info.url);
+            }
+          });
+        }
       });
+    });
+    window.electronAPI.onDownloadProgress((percent) => {
+      const bar = document.getElementById("updateProgressBar");
+      if (bar) {
+        bar.style.width = `${percent}%`;
+        bar.textContent = `${percent}%`;
+      }
+    });
+    window.electronAPI.onUpdateDownloaded(() => {
+      import_sweetalert2.default.fire({
+        title: "\u062F\u0627\u0646\u0644\u0648\u062F \u06A9\u0627\u0645\u0644 \u0634\u062F",
+        text: "\u0622\u0645\u0627\u062F\u0647 \u0646\u0635\u0628 \u0627\u0633\u062A. \u0647\u0645\u200C\u0627\u06A9\u0646\u0648\u0646 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0645\u062C\u062F\u062F \u0634\u0648\u062F\u061F",
+        icon: "success",
+        showCancelButton: true,
+        confirmButtonText: "\u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0645\u062C\u062F\u062F",
+        cancelButtonText: "\u0628\u0639\u062F\u0627"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.electronAPI.installUpdate();
+        }
+      });
+    });
+    window.electronAPI.onUpdateError((err) => {
+      import_sweetalert2.default.fire("\u062E\u0637\u0627 \u062F\u0631 \u0628\u0647\u200C\u0631\u0648\u0632\u0631\u0633\u0627\u0646\u06CC", err.message || "\u062E\u0637\u0627\u06CC \u0646\u0627\u0634\u0646\u0627\u062E\u062A\u0647", "error");
     });
     window.electronAPI.onUpdateNotAvailable(() => {
       if (updateSwal) import_sweetalert2.default.close();
@@ -3977,25 +4065,6 @@
         icon: "success",
         timer: 2e3,
         showConfirmButton: false
-      });
-    });
-    window.electronAPI.onUpdateError((err) => {
-      if (updateSwal) import_sweetalert2.default.close();
-      updateSwal = null;
-      import_sweetalert2.default.fire("\u062E\u0637\u0627 \u062F\u0631 \u0628\u0631\u0631\u0633\u06CC \u0628\u0647\u200C\u0631\u0648\u0632\u0631\u0633\u0627\u0646\u06CC", err.message || "\u062E\u0637\u0627\u06CC \u0646\u0627\u0634\u0646\u0627\u062E\u062A\u0647", "error");
-    });
-    window.electronAPI.onUpdateDownloaded(() => {
-      if (updateSwal) import_sweetalert2.default.close();
-      updateSwal = null;
-      import_sweetalert2.default.fire({
-        title: "\u062F\u0627\u0646\u0644\u0648\u062F \u06A9\u0627\u0645\u0644 \u0634\u062F",
-        text: "\u0628\u0631\u0646\u0627\u0645\u0647 \u0622\u0645\u0627\u062F\u0647 \u0646\u0635\u0628 \u0627\u0633\u062A. \u0647\u0645\u200C\u0627\u06A9\u0646\u0648\u0646 \u0646\u0635\u0628 \u0648 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0645\u062C\u062F\u062F \u0634\u0648\u062F\u061F",
-        icon: "success",
-        showCancelButton: true,
-        confirmButtonText: "\u0646\u0635\u0628 \u0648 \u0631\u0627\u0647\u200C\u0627\u0646\u062F\u0627\u0632\u06CC \u0645\u062C\u062F\u062F",
-        cancelButtonText: "\u0628\u0639\u062F\u0627"
-      }).then((result) => {
-        if (result.isConfirmed) window.electronAPI.installUpdate();
       });
     });
   }

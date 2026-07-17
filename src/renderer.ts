@@ -26,6 +26,7 @@ let searchTerm = '';
 let sortDirection: 'asc' | 'desc' = 'asc';
 let currentPage = 1;
 let pageSize = 10;
+let yearFilter = ''; // selected Jalali year
 
 // ---------- Utility ----------
 function computeTotal(price: number, penalty: number): number {
@@ -47,33 +48,61 @@ function unformatPrice(str: string): number {
     return parseInt(toEnglishDigits(str).replace(/,/g, '')) || 0;
 }
 
+// ---------- Year filter population ----------
+function populateYearFilter() {
+    const years = new Set<string>();
+    tickets.forEach(t => {
+        const y = t.flight_date.split('/')[0];
+        if (y) years.add(y);
+    });
+        const select = document.getElementById('yearFilterSelect') as HTMLSelectElement;
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">همه</option>';
+        Array.from(years).sort().forEach(y => {
+            select.add(new Option(y, y));
+        });
+        select.value = yearFilter || '';
+}
+
 // ---------- Data loading & table rendering ----------
 async function loadTickets() {
     tickets = await api.getAllTickets();
     currentPage = 1;
+    populateYearFilter();
     renderTable();
 }
 
 function renderTable() {
+    // 1. Filter by year and search term
+    let filtered = tickets;
+    if (yearFilter) {
+        filtered = filtered.filter(t => t.flight_date.startsWith(yearFilter + '/'));
+    }
     const filter = searchTerm.toLowerCase().trim();
-    const filtered = filter === '' ? tickets : tickets.filter(t => {
-        const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_time} ${t.ticket_price}`.toLowerCase();
-        return text.includes(filter);
-    });
+    if (filter) {
+        filtered = filtered.filter(t => {
+            const text = `${t.row_number} ${t.first_name_persian} ${t.last_name_persian} ${t.origin_city} ${t.destination_city} ${t.flight_date} ${t.flight_time} ${t.ticket_price}`.toLowerCase();
+            return text.includes(filter);
+        });
+    }
 
+    // 2. Sort
     const sorted = [...filtered].sort((a, b) => {
         const diff = a.row_number - b.row_number;
         return sortDirection === 'asc' ? diff : -diff;
     });
 
+    // 3. Paginate
     const totalPages = pageSize === 0 ? 1 : Math.ceil(sorted.length / pageSize);
     const start = pageSize === 0 ? 0 : (currentPage - 1) * pageSize;
     const paginated = pageSize === 0 ? sorted : sorted.slice(start, start + pageSize);
 
+    // 4. Update pagination controls
     document.getElementById('pageInfo')!.textContent = `صفحه ${currentPage} از ${totalPages}`;
     (document.getElementById('prevPageBtn') as HTMLButtonElement).disabled = currentPage <= 1;
     (document.getElementById('nextPageBtn') as HTMLButtonElement).disabled = currentPage >= totalPages;
 
+    // 5. Build table body
     const tbody = document.getElementById('ticketsTableBody')!;
     tbody.innerHTML = '';
     paginated.forEach((t: any) => {
@@ -147,6 +176,7 @@ function getSelectedIds(): number[] {
 function updateMultiButtons() {
     const sel = getSelectedIds();
     (document.getElementById('previewSelectedBtn') as HTMLButtonElement).disabled = sel.length === 0;
+    (document.getElementById('deleteSelectedBtn') as HTMLButtonElement).disabled = sel.length === 0;
 }
 
 // ---------- Edit ticket ----------
@@ -172,14 +202,14 @@ function showPreview(ticketsToPreview: any[]) {
         html += buildPreviewHTML(t);
         if (idx < ticketsToPreview.length - 1) html += '<div style="page-break-after: always;"></div>';
     });
-    modalBody.innerHTML = html;
+        modalBody.innerHTML = html;
 
-    const modalEl = document.getElementById('previewModal')!;
-    const modal = new bootstrap.Modal(modalEl);
-    modal.show();
+        const modalEl = document.getElementById('previewModal')!;
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
 
-    (document.getElementById('printPreviewBtn')!).onclick = () => window.print();
-    (document.getElementById('exportPreviewBtn')!).onclick = () => exportPreviewAsImage();
+        (document.getElementById('printPreviewBtn')!).onclick = () => window.print();
+        (document.getElementById('exportPreviewBtn')!).onclick = () => exportPreviewAsImage();
 }
 
 function buildPreviewHTML(ticket: any): string {
@@ -236,13 +266,12 @@ function buildPreviewHTML(ticket: any): string {
     </div>
 
     <div class="row mt-5">
-        <div class="col-12 text-end">
-            <span class="border-top border-dark border-2 pt-2 d-inline-block">Seal and signature</span>
-        </div>
+    <div class="col-12 text-end">
+    <span class="border-top border-dark border-2 pt-2 d-inline-block">Seal and signature</span>
+    </div>
     </div>
     </div>`;
 }
-
 
 async function exportPreviewAsImage() {
     const ticketsToExport = currentPreviewTickets;
@@ -285,6 +314,25 @@ document.getElementById('previewSelectedBtn')!.addEventListener('click', () => {
     if (selected.length) showPreview(selected);
 });
 
+// ---------- Delete selected button ----------
+document.getElementById('deleteSelectedBtn')!.addEventListener('click', async () => {
+    const ids = getSelectedIds();
+    if (ids.length === 0) return;
+    const confirm = await Swal.fire({
+        title: 'حذف انتخاب‌ها',
+        text: `آیا مطمئن هستید که می‌خواهید ${ids.length} رکورد را حذف کنید؟`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'بله، حذف کن',
+        cancelButtonText: 'لغو',
+    });
+    if (confirm.isConfirmed) {
+        await api.deleteMultipleTickets(ids);
+        loadTickets();
+        Swal.fire('حذف شد', `${ids.length} رکورد حذف شد.`, 'success');
+    }
+});
+
 // ---------- Sort, Page size & Pagination controls ----------
 document.getElementById('sortBtn')!.addEventListener('click', () => {
     sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
@@ -321,6 +369,13 @@ document.getElementById('searchInput')!.addEventListener('input', (e) => {
     renderTable();
 });
 
+// ---------- Year filter ----------
+document.getElementById('yearFilterSelect')!.addEventListener('change', (e) => {
+    yearFilter = (e.target as HTMLSelectElement).value;
+    currentPage = 1;
+    renderTable();
+});
+
 // ---------- New ticket button ----------
 document.getElementById('newTicketBtn')!.addEventListener('click', () => {
     editingId = null;
@@ -328,9 +383,16 @@ document.getElementById('newTicketBtn')!.addEventListener('click', () => {
     buildForm();
 });
 
-// ----- Import / Export / Clear buttons -----
+// ---------- Import / Export buttons ----------
 document.getElementById('importExcelBtn')!.addEventListener('click', async () => {
+    Swal.fire({
+        title: 'در حال بارگذاری فایل Excel',
+        html: 'لطفا صبر کنید...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
     const result = await api.importExcel();
+    Swal.close();
     if (result.success) {
         Swal.fire('موفق', `${result.count} رکورد اضافه شد.`, 'success');
         loadTickets();
@@ -341,22 +403,6 @@ document.getElementById('importExcelBtn')!.addEventListener('click', async () =>
 
 document.getElementById('exportExcelBtn')!.addEventListener('click', async () => {
     await api.exportExcel();
-});
-
-document.getElementById('clearAllBtn')!.addEventListener('click', async () => {
-    const confirm = await Swal.fire({
-        title: 'حذف همه رکوردها',
-        text: 'آیا مطمئن هستید؟ این عملیات غیرقابل بازگشت است.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'بله، همه را حذف کن',
-        cancelButtonText: 'لغو',
-    });
-    if (confirm.isConfirmed) {
-        await api.clearAllTickets();
-        loadTickets();
-        Swal.fire('حذف شد', 'همه رکوردها پاک شدند.', 'success');
-    }
 });
 
 // ---------- Form building ----------
@@ -404,7 +450,7 @@ function buildForm(existingTicket?: any) {
     </select></div>
     <div class="col-md-6"><label class="form-label">ایرلاین</label>
     <select id="airline" class="form-select searchable" required>
-    <option value="">انتخاب کنید</option>
+    <option value="">انتخاب کنید یا بنویسید</option>
     ${airlines.map(a => `<option value="${a.persianName}" ${existingTicket?.airline===a.persianName?'selected':''}>${a.persianName}</option>`).join('')}
     </select></div>
     <div class="col-md-3"><label class="form-label">شماره پرواز</label>
@@ -445,14 +491,29 @@ function buildForm(existingTicket?: any) {
 
     container.innerHTML = html;
 
-    $('.searchable').select2({
+    // Searchable selects (cities, airports)
+    $('.searchable:not(#airline)').select2({
         placeholder: 'جستجو...',
         language: { noResults: () => 'نتیجه‌ای یافت نشد' }
     });
 
+    // Airline with custom tags
+    $('#airline').select2({
+        placeholder: 'انتخاب کنید یا بنویسید',
+        language: { noResults: () => 'نتیجه‌ای یافت نشد' },
+                          tags: true,
+                          createTag: (params: any) => {
+                              const term = params.term.trim();
+                              if (term === '') return null;
+                              // Avoid duplicate if already exists
+                              if (airlines.find(a => a.persianName === term)) return null;
+                              return { id: term, text: term, newTag: true };
+                          }
+    });
+
     jalaliDatepicker.startWatch({
         input: document.getElementById('flightDate')!,
-        persianDigits: true
+                                persianDigits: true
     });
 
     const populateAirports = (citySelectId: string, airportSelectId: string, existingValue?: string) => {
@@ -565,7 +626,7 @@ function attachFormEvents(existingTicket?: any) {
             destination_airport: $('#destAirport').val() as string,
             flight_date: (document.getElementById('flightDate') as HTMLInputElement).value,
             flight_time: `${(document.getElementById('flightHour') as HTMLSelectElement).value}:${(document.getElementById('flightMinute') as HTMLSelectElement).value}`,
-            airline: $('#airline').val() as string,
+            airline: $('#airline').val() as string,   // may be a new custom string
             flight_number: (document.getElementById('flightNumber') as HTMLInputElement).value,
             max_baggage: parseInt(toEnglishDigits((document.getElementById('maxBaggage') as HTMLInputElement).value)) || 20,
             ticket_price: unformatPrice(priceInp.value),
@@ -574,6 +635,14 @@ function attachFormEvents(existingTicket?: any) {
             watcher: toEnglishDigits((document.getElementById('watcher') as HTMLInputElement).value),
             reference: (document.getElementById('reference') as HTMLInputElement).value,
         };
+
+        // If airline is a new custom name, we should add it to the global list
+        const airlineVal = shared.airline;
+        if (airlineVal && !airlines.find(a => a.persianName === airlineVal)) {
+            // It's a new airline – add it (with empty English name and code for now)
+            airlines.push({ persianName: airlineVal, englishName: airlineVal, code: '' });
+        }
+
         if (!passengers.length) { Swal.fire('خطا', 'حداقل یک مسافر وارد کنید.', 'error'); return; }
 
         if (editingId) {
@@ -625,6 +694,7 @@ if (window.electronAPI) {
             didOpen: () => Swal.showLoading()
         });
     });
+
     window.electronAPI.onUpdateAvailable((info: any) => {
         if (updateSwal) Swal.close();
         updateSwal = null;
@@ -636,9 +706,50 @@ if (window.electronAPI) {
             confirmButtonText: 'دانلود',
             cancelButtonText: 'بعدا',
         }).then((result) => {
-            if (result.isConfirmed) window.electronAPI.startDownload();
+            if (result.isConfirmed) {
+                // Show download progress
+                Swal.fire({
+                    title: 'در حال دانلود',
+                    html: '<div class="progress"><div class="progress-bar" role="progressbar" style="width: 0%" id="updateProgressBar">0%</div></div>',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                        // Start download
+                        window.electronAPI.startDownload(info.url);
+                    }
+                });
+            }
         });
     });
+
+    window.electronAPI.onDownloadProgress((percent: number) => {
+        const bar = document.getElementById('updateProgressBar');
+        if (bar) {
+            bar.style.width = `${percent}%`;
+            bar.textContent = `${percent}%`;
+        }
+    });
+
+    window.electronAPI.onUpdateDownloaded(() => {
+        Swal.fire({
+            title: 'دانلود کامل شد',
+            text: 'آماده نصب است. هم‌اکنون راه‌اندازی مجدد شود؟',
+            icon: 'success',
+            showCancelButton: true,
+            confirmButtonText: 'راه‌اندازی مجدد',
+            cancelButtonText: 'بعدا',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.electronAPI.installUpdate();
+            }
+        });
+    });
+
+    window.electronAPI.onUpdateError((err: any) => {
+        Swal.fire('خطا در به‌روزرسانی', err.message || 'خطای ناشناخته', 'error');
+    });
+
     window.electronAPI.onUpdateNotAvailable(() => {
         if (updateSwal) Swal.close();
         updateSwal = null;
@@ -648,25 +759,6 @@ if (window.electronAPI) {
             icon: 'success',
             timer: 2000,
             showConfirmButton: false
-        });
-    });
-    window.electronAPI.onUpdateError((err: any) => {
-        if (updateSwal) Swal.close();
-        updateSwal = null;
-        Swal.fire('خطا در بررسی به‌روزرسانی', err.message || 'خطای ناشناخته', 'error');
-    });
-    window.electronAPI.onUpdateDownloaded(() => {
-        if (updateSwal) Swal.close();
-        updateSwal = null;
-        Swal.fire({
-            title: 'دانلود کامل شد',
-            text: 'برنامه آماده نصب است. هم‌اکنون نصب و راه‌اندازی مجدد شود؟',
-            icon: 'success',
-            showCancelButton: true,
-            confirmButtonText: 'نصب و راه‌اندازی مجدد',
-            cancelButtonText: 'بعدا',
-        }).then((result) => {
-            if (result.isConfirmed) window.electronAPI.installUpdate();
         });
     });
 }

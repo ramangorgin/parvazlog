@@ -49,7 +49,7 @@ export const cityAirports = [
 { persianCity: 'خرمشهر', englishCity: 'Khorramshahr', airportPersian: 'بین‌المللی خرمشهر', airportEnglish: 'Khorramshahr International Airport', airportCode: 'KHZ' },
 ];
 
-export const airlines = [
+export let airlines = [
     { persianName: 'ایران ایر', englishName: 'Iran Air', code: 'IR' },
 { persianName: 'ماهان', englishName: 'Mahan Air', code: 'W5' },
 { persianName: 'آسمان', englishName: 'Aseman Airlines', code: 'EP' },
@@ -66,6 +66,17 @@ export const airlines = [
 { persianName: 'کارون', englishName: 'Karun Airlines', code: 'IRK' },
 ];
 
+export function addAirline(persianName: string, englishName: string, code: string) {
+    if (!airlines.find(a => a.persianName === persianName)) {
+        airlines.push({ persianName, englishName, code });
+    }
+}
+
+export function getAirlineEnglish(persian: string): string {
+    const found = airlines.find(a => a.persianName === persian);
+    return found ? found.englishName : persian;
+}
+
 export function getCityEnglish(persian: string): string {
     const f = cityAirports.find(c => c.persianCity === persian);
     return f ? f.englishCity : persian;
@@ -74,9 +85,4 @@ export function getCityEnglish(persian: string): string {
 export function getAirportEnglish(persianAirportName: string): string {
     const f = cityAirports.find(c => c.airportPersian === persianAirportName);
     return f ? f.airportEnglish : persianAirportName;
-}
-
-export function getAirlineEnglish(persian: string): string {
-    const f = airlines.find(a => a.persianName === persian);
-    return f ? f.englishName : persian;
 }

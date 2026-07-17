@@ -1,6 +1,6 @@
 {
   "name": "parvazlog",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Desktop ticket manager for Mr. Vala",
   "main": "dist/main.js",
   "scripts": {
@@ -11,14 +11,11 @@
     "dist": "npm run build && electron-builder --win --publish always",
     "dev": "npx electron-rebuild -f -w better-sqlite3 && npm start"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@majidh1/jalalidatepicker": "^1.0.0",
     "better-sqlite3": "^9.4.3",
     "bootstrap": "^5.3.2",
-    "electron-updater": "^6.1.7",
+    "electron-dl": "^4.0.0",
     "html2canvas": "^1.4.1",
     "jquery": "^3.7.1",
     "select2": "^4.1.0-rc.0",
@@ -47,8 +44,7 @@
       "artifactName": "Parvazlog-${version}.exe"
     },
     "extraResources": [
-      { "from": "data", "to": "data", "filter": ["**/*"] },
-      { "from": "assets/app-update.yml", "to": "app-update.yml" }
+      { "from": "data", "to": "data", "filter": ["**/*"] }
     ],
     "publish": {
       "provider": "github",

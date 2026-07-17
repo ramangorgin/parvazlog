@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.airlines = exports.cityAirports = void 0;
+exports.addAirline = addAirline;
+exports.getAirlineEnglish = getAirlineEnglish;
 exports.getCityEnglish = getCityEnglish;
 exports.getAirportEnglish = getAirportEnglish;
-exports.getAirlineEnglish = getAirlineEnglish;
 exports.cityAirports = [
     { persianCity: 'تهران', englishCity: 'Tehran', airportPersian: 'مهرآباد', airportEnglish: 'Mehrabad International Airport', airportCode: 'THR' },
     { persianCity: 'تهران', englishCity: 'Tehran', airportPersian: 'امام خمینی', airportEnglish: 'Imam Khomeini International Airport', airportCode: 'IKA' },
@@ -70,6 +71,15 @@ exports.airlines = [
     { persianName: 'پویا', englishName: 'Pouya Air', code: 'PYA' },
     { persianName: 'کارون', englishName: 'Karun Airlines', code: 'IRK' },
 ];
+function addAirline(persianName, englishName, code) {
+    if (!exports.airlines.find(a => a.persianName === persianName)) {
+        exports.airlines.push({ persianName, englishName, code });
+    }
+}
+function getAirlineEnglish(persian) {
+    const found = exports.airlines.find(a => a.persianName === persian);
+    return found ? found.englishName : persian;
+}
 function getCityEnglish(persian) {
     const f = exports.cityAirports.find(c => c.persianCity === persian);
     return f ? f.englishCity : persian;
@@ -77,8 +87,4 @@ function getCityEnglish(persian) {
 function getAirportEnglish(persianAirportName) {
     const f = exports.cityAirports.find(c => c.airportPersian === persianAirportName);
     return f ? f.airportEnglish : persianAirportName;
-}
-function getAirlineEnglish(persian) {
-    const f = exports.airlines.find(a => a.persianName === persian);
-    return f ? f.englishName : persian;
 }
