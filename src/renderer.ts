@@ -290,7 +290,7 @@ async function exportPreviewAsImage() {
         const dataUrl = canvas.toDataURL('image/png');
         const year = ticket.flight_date.split('/')[0];
         const fileName = `${year}.${ticket.row_number}.png`;
-        const filePath = await api.saveImage(dataUrl, fileName);
+        const filePath = await api.saveImage(dataUrl, fileName, true);
         if (filePath) {
             savedCount++;
         } else {
@@ -306,6 +306,23 @@ async function exportPreviewAsImage() {
         Swal.fire('ذخیره شد', `${savedCount} فایل با موفقیت ذخیره شد.`, 'success');
     }
 }
+
+// ---------- Export path setting ----------
+document.getElementById('setExportPathBtn')!.addEventListener('click', async () => {
+    const path = await api.setExportPath();
+    if (path) {
+        Swal.fire('تنظیم شد', `مسیر خروجی: ${path}`, 'success');
+    }
+});
+
+// Load and display current path on startup (optional)
+(async () => {
+    const currentPath = await api.getExportPath();
+    if (currentPath) {
+        // You can show it in a tooltip or small label; for now we just keep it silent
+        (document.getElementById('setExportPathBtn') as HTMLElement).title = `Current: ${currentPath}`;
+    }
+})();
 
 // ---------- Multi‑select preview button ----------
 document.getElementById('previewSelectedBtn')!.addEventListener('click', () => {

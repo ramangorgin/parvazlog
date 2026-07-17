@@ -201,12 +201,50 @@ electron_1.app.whenReady().then(() => {
         (0, database_1.getDb)().prepare('DELETE FROM tickets').run();
         return { success: true };
     });
-    // Image save
-    electron_1.ipcMain.handle('save-image', async (_, dataUrl, defaultName) => {
-        const { filePath } = await electron_1.dialog.showSaveDialog({
-            defaultPath: defaultName,
-            filters: [{ name: 'PNG', extensions: ['png'] }],
+    // ---------- Export path config ----------
+    const configPath = path.join(electron_1.app.getPath('userData'), 'config.json');
+    function getConfig() {
+        try {
+            if (fs.existsSync(configPath)) {
+                return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+            }
+        }
+        catch (e) { }
+        return { exportPath: '' };
+    }
+    function saveConfig(config) {
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    }
+    electron_1.ipcMain.handle('get-export-path', () => {
+        return getConfig().exportPath;
+    });
+    electron_1.ipcMain.handle('set-export-path', async () => {
+        const { filePaths } = await electron_1.dialog.showOpenDialog({
+            properties: ['openDirectory'],
+            title: 'Select export folder'
         });
+        if (filePaths && filePaths.length > 0) {
+            const config = getConfig();
+            config.exportPath = filePaths[0];
+            saveConfig(config);
+            return filePaths[0];
+        }
+        return null;
+    });
+    // Modify the existing save-image handler to accept an optional direct path
+    electron_1.ipcMain.handle('save-image', async (_, dataUrl, defaultName, useDefaultPath = true) => {
+        const config = getConfig();
+        let filePath = null;
+        if (useDefaultPath && config.exportPath) {
+            filePath = path.join(config.exportPath, defaultName);
+        }
+        else {
+            const { filePath: chosenPath } = await electron_1.dialog.showSaveDialog({
+                defaultPath: defaultName,
+                filters: [{ name: 'PNG', extensions: ['png'] }],
+            });
+            filePath = chosenPath || null;
+        }
         if (filePath) {
             fs.writeFileSync(filePath, dataUrl.replace(/^data:image\/png;base64,/, ''), 'base64');
             return filePath;

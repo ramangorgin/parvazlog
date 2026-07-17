@@ -1,8 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
-    // Database
-    getAllTickets: () => ipcRenderer.invoke('db:getAllTickets'),
+                                // Database
+                                getAllTickets: () => ipcRenderer.invoke('db:getAllTickets'),
                                 getTicketById: (id: number) => ipcRenderer.invoke('db:getTicketById', id),
                                 insertTicket: (ticket: any) => ipcRenderer.invoke('db:insertTicket', ticket),
                                 updateTicket: (id: number, ticket: any) => ipcRenderer.invoke('db:updateTicket', id, ticket),
@@ -30,4 +30,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
                                 onUpdateError: (callback: (err: any) => void) => ipcRenderer.on('update-error', (_, err) => callback(err)),
                                 onUpdateDownloaded: (callback: () => void) => ipcRenderer.on('update-downloaded', () => callback()),
                                 onDownloadProgress: (callback: (percent: number) => void) => ipcRenderer.on('download-progress', (_, p) => callback(p)),
+
+                                // Export path
+                                getExportPath: () => ipcRenderer.invoke('get-export-path'),
+                                setExportPath: () => ipcRenderer.invoke('set-export-path'),
 });

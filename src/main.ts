@@ -195,12 +195,55 @@ app.whenReady().then(() => {
         return { success: true };
     });
 
-    // Image save
-    ipcMain.handle('save-image', async (_, dataUrl: string, defaultName: string) => {
-        const { filePath } = await dialog.showSaveDialog({
-            defaultPath: defaultName,
-                filters: [{ name: 'PNG', extensions: ['png'] }],
+    // ---------- Export path config ----------
+    const configPath = path.join(app.getPath('userData'), 'config.json');
+
+    function getConfig(): { exportPath: string } {
+        try {
+            if (fs.existsSync(configPath)) {
+                return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+            }
+        } catch (e) {}
+        return { exportPath: '' };
+    }
+
+    function saveConfig(config: { exportPath: string }) {
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    }
+
+    ipcMain.handle('get-export-path', () => {
+        return getConfig().exportPath;
+    });
+
+    ipcMain.handle('set-export-path', async () => {
+        const { filePaths } = await dialog.showOpenDialog({
+            properties: ['openDirectory'],
+            title: 'Select export folder'
         });
+        if (filePaths && filePaths.length > 0) {
+            const config = getConfig();
+            config.exportPath = filePaths[0];
+            saveConfig(config);
+            return filePaths[0];
+        }
+        return null;
+    });
+
+    // Modify the existing save-image handler to accept an optional direct path
+    ipcMain.handle('save-image', async (_, dataUrl: string, defaultName: string, useDefaultPath: boolean = true) => {
+        const config = getConfig();
+        let filePath: string | null = null;
+
+        if (useDefaultPath && config.exportPath) {
+            filePath = path.join(config.exportPath, defaultName);
+        } else {
+            const { filePath: chosenPath } = await dialog.showSaveDialog({
+                defaultPath: defaultName,
+                    filters: [{ name: 'PNG', extensions: ['png'] }],
+            });
+            filePath = chosenPath || null;
+        }
+
         if (filePath) {
             fs.writeFileSync(filePath, dataUrl.replace(/^data:image\/png;base64,/, ''), 'base64');
             return filePath;

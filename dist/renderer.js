@@ -3639,7 +3639,7 @@
       const dataUrl = canvas.toDataURL("image/png");
       const year = ticket.flight_date.split("/")[0];
       const fileName = `${year}.${ticket.row_number}.png`;
-      const filePath = await api.saveImage(dataUrl, fileName);
+      const filePath = await api.saveImage(dataUrl, fileName, true);
       if (filePath) {
         savedCount++;
       } else {
@@ -3654,6 +3654,18 @@
       import_sweetalert2.default.fire("\u0630\u062E\u06CC\u0631\u0647 \u0634\u062F", `${savedCount} \u0641\u0627\u06CC\u0644 \u0628\u0627 \u0645\u0648\u0641\u0642\u06CC\u062A \u0630\u062E\u06CC\u0631\u0647 \u0634\u062F.`, "success");
     }
   }
+  document.getElementById("setExportPathBtn").addEventListener("click", async () => {
+    const path = await api.setExportPath();
+    if (path) {
+      import_sweetalert2.default.fire("\u062A\u0646\u0638\u06CC\u0645 \u0634\u062F", `\u0645\u0633\u06CC\u0631 \u062E\u0631\u0648\u062C\u06CC: ${path}`, "success");
+    }
+  });
+  (async () => {
+    const currentPath = await api.getExportPath();
+    if (currentPath) {
+      document.getElementById("setExportPathBtn").title = `Current: ${currentPath}`;
+    }
+  })();
   document.getElementById("previewSelectedBtn").addEventListener("click", () => {
     const ids = getSelectedIds();
     const selected = tickets.filter((t) => ids.includes(t.id));

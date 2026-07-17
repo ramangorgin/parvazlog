@@ -27,4 +27,7 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     onUpdateError: (callback) => electron_1.ipcRenderer.on('update-error', (_, err) => callback(err)),
     onUpdateDownloaded: (callback) => electron_1.ipcRenderer.on('update-downloaded', () => callback()),
     onDownloadProgress: (callback) => electron_1.ipcRenderer.on('download-progress', (_, p) => callback(p)),
+    // Export path
+    getExportPath: () => electron_1.ipcRenderer.invoke('get-export-path'),
+    setExportPath: () => electron_1.ipcRenderer.invoke('set-export-path'),
 });
